@@ -1,0 +1,8 @@
+﻿Component,Weight,Meaning
+Development Need,0.25,WDI 최신 지표 기반 수원국 개발수요
+Korea Cooperation Base,0.2,KOICA 2019~2024 사업 수·지출 기반 협력기반
+Sector Fit,0.15,국가×분야 다년도 KOICA 사업패턴
+Opportunity Gap,0.1,개발수요 대비 추가 사업기회 공백
+Policy Alignment,0.15,"CPS 대상국 여부, KOICA 사무소, 분야별 KOICA 지원규모"
+Risk Feasibility,0.1,"취약국가지수, 부패인식, 전자정부, 인간개발, 기업여건 기반 실행가능성"
+Data Reliability,0.05,WDI/정책·리스크 지표 커버리지 및 기존 데이터 신뢰도

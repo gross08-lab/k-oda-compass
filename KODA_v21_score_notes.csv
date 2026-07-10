@@ -1,0 +1,6 @@
+﻿Item,Note
+Source scope,"V2.1 uses KOICA-only 2019~2024 project evidence, WDI 2019~2025 latest values, and KOICA 협력국 통합 개발 지표 2023-06-14."
+Policy proxy,"국가협력전략 대상국가, KOICA 사무소 주재 여부, KOICA 분야별 지원규모를 정책 적합성의 공개자료 기반 proxy로 사용."
+Risk proxy,"취약국가 지수는 낮을수록 실행가능성이 높도록 역산했고, 부패인식점수·전자정부지수·인간개발지수는 높을수록 실행가능성이 높게 반영."
+CPS PDFs,27개 CPS PDF 전문은 아직 파싱하지 않음. RAG Builder 고도화 단계에서 Top 10 중심으로 문서 근거를 추가하는 것이 효율적.
+ODA flow caution,금액 단위는 원자료 메타데이터 최종 확인 전까지 raw value로 표기. 공식 발표용에서는 USD/백만불 등 단위 확정 필요.

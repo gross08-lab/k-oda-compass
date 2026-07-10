@@ -1,0 +1,28 @@
+﻿Country_Code,Country_KR,PDF_File,Pages,Readable_Pages,OCR_Target_Pages,Readable_Page_Ratio,Extracted_Chars,Coverage_Status
+BGD,방글라데시,BGD.pdf,35,33,2,0.9429,22530,Partial text layer
+BOL,볼리비아,BOL.pdf,27,25,2,0.9259,21177,Partial text layer
+COL,콜롬비아,COL.pdf,32,0,32,0.0,0,Image-only - OCR required
+EGY,이집트,EGY.pdf,28,28,0,1.0,19040,Text layer OK
+ETH,에티오피아,ETH.pdf,30,28,2,0.9333,22540,Partial text layer
+GHA,가나,GHA.pdf,35,0,35,0.0,0,Image-only - OCR required
+IDN,인도네시아,IDN.pdf,38,36,2,0.9474,22023,Partial text layer
+IND,인도,IND.pdf,33,31,2,0.9394,22170,Partial text layer
+KGZ,키르기스스탄,KGZ.pdf,33,32,1,0.9697,23451,Partial text layer
+KHM,캄보디아,KHM.pdf,31,0,31,0.0,0,Image-only - OCR required
+LAO,라오스,LAO.pdf,29,27,2,0.931,20315,Partial text layer
+LKA,스리랑카,LKA.pdf,40,40,0,1.0,28667,Text layer OK
+MMR,미얀마,MMR.pdf,35,0,35,0.0,0,Image-only - OCR required
+MNG,몽골,MNG.pdf,40,0,40,0.0,0,Image-only - OCR required
+NPL,네팔,NPL.pdf,48,47,1,0.9792,32283,Partial text layer
+PAK,파키스탄,PAK.pdf,30,0,30,0.0,0,Image-only - OCR required
+PER,페루,PER.pdf,30,28,2,0.9333,21778,Partial text layer
+PHL,필리핀,PHL.pdf,34,32,2,0.9412,28058,Partial text layer
+PRY,파라과이,PRY.pdf,27,0,27,0.0,0,Image-only - OCR required
+RWA,르완다,RWA.pdf,47,45,2,0.9574,33025,Partial text layer
+SEN,세네갈,SEN.pdf,47,47,0,1.0,34280,Text layer OK
+TJK,타지키스탄,TJK.pdf,37,37,0,1.0,24698,Text layer OK
+TZA,탄자니아,TZA.pdf,30,28,2,0.9333,21673,Partial text layer
+UGA,우간다,UGA.pdf,26,24,2,0.9231,19719,Partial text layer
+UKR,우크라이나,UKR.pdf,35,35,0,1.0,24294,Text layer OK
+UZB,우즈베키스탄,UZB.pdf,30,28,2,0.9333,24453,Partial text layer
+VNM,베트남,VNM.pdf,34,32,2,0.9412,25861,Partial text layer
