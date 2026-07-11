@@ -47,6 +47,7 @@ def builder_artifacts() -> dict:
         top_k=16,
     )
     assumptions = app.normalize_design_assumptions()
+    result = app.build_builder_result(country, sector, docs, assumptions)
     proposal = app.build_rag_markdown_proposal(
         country,
         sector,
@@ -57,9 +58,10 @@ def builder_artifacts() -> dict:
         docs,
         data["weights"],
         assumptions,
+        result,
     )
-    brief = app.build_policy_brief(country, sector, row, docs, assumptions)
-    evidence_pack = app.build_rag_evidence_pack(country, sector, "디지털 행정", docs, assumptions)
+    brief = app.build_policy_brief(country, sector, row, docs, assumptions, result)
+    evidence_pack = app.build_rag_evidence_pack(country, sector, "디지털 행정", docs, assumptions, result)
     proposal_pdf = app.markdown_to_pdf_bytes(
         "K-ODA Compass 탄자니아 공공행정 근거 기반 AI 사업제안서",
         proposal,
@@ -69,6 +71,7 @@ def builder_artifacts() -> dict:
         "sector": sector,
         "corpus": corpus,
         "docs": docs,
+        "result": result,
         "proposal": proposal,
         "brief": brief,
         "evidence_pack": evidence_pack,
@@ -148,7 +151,7 @@ def test_evidence_pack_has_traceability_metadata(builder_artifacts: dict) -> Non
         "원자료 ID",
         "모델에서의 역할",
         "제한사항",
-        "AI Design Assumption Inventory",
+        "AI 생성 예비 설계 가정",
     ):
         assert field in evidence_pack
     assert "수집일 메타데이터 없음" in evidence_pack
@@ -174,8 +177,39 @@ def test_builder_quality_report_has_no_block(builder_artifacts: dict) -> None:
         builder_artifacts["brief"],
         builder_artifacts["evidence_pack"],
         builder_artifacts["proposal_pdf"],
+        builder_artifacts["result"],
     )
 
     assert status == "REVIEW"
     assert not report["상태"].eq("BLOCK").any()
     assert report.loc[report["검사 항목"] == "Citation ID 무결성", "상태"].iloc[0] == "PASS"
+    for item in ("AI 설계 가정", "원천·파생근거 구분", "WDI 역할", "Citation 의미 정합성"):
+        assert report.loc[report["검사 항목"] == item, "상태"].iloc[0] == "PASS"
+
+
+def test_structured_result_is_shared_by_all_outputs(builder_artifacts: dict) -> None:
+    result = builder_artifacts["result"]
+    assumptions = result["assumptions"]
+    evidence = result["evidence"]
+
+    assert [item["assumption_id"] for item in assumptions] == [f"A{index:02d}" for index in range(1, 8)]
+    assert all(item["evidence_class"] == "AI Design Assumption" for item in assumptions)
+    assert all(item.get("Evidence_Class") for item in evidence)
+    for output_name in ("proposal", "brief", "evidence_pack"):
+        output = builder_artifacts[output_name]
+        assert "Evidence Class" in output
+        assert "AI 생성 예비 설계 가정" in output
+        assert "국가 개발여건 보조 신호" in output
+
+
+def test_citation_semantics_rejects_non_cps_id_for_cps_claim(builder_artifacts: dict) -> None:
+    docs = builder_artifacts["docs"]
+    non_cps_id = docs.loc[docs["Source_Type"] == "Sector Portfolio", "Citation_ID"].iloc[0]
+    mismatches = app.citation_semantic_mismatches(
+        f"CPS에서 공공행정 강화를 명시한다([{non_cps_id}]).",
+        docs,
+    )
+
+    assert len(mismatches) == 1
+    assert mismatches[0]["claim_type"] == "CPS 정책 주장"
+    assert mismatches[0]["citation_ids"] == non_cps_id
