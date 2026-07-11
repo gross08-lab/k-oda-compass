@@ -2,7 +2,7 @@
 
 ## GitHub
 
-1. Create a repository, for example `koda-compass-rag`.
+1. Use the repository `k-oda-compass`.
 2. Commit every file in this folder.
 3. Push to GitHub.
 
@@ -11,7 +11,7 @@ git init
 git add .
 git commit -m "Add K-ODA Compass RAG submission"
 git branch -M main
-git remote add origin https://github.com/<your-id>/koda-compass-rag.git
+git remote add origin https://github.com/gross08-lab/k-oda-compass.git
 git push -u origin main
 ```
 
@@ -66,8 +66,8 @@ With `OPENAI_API_KEY`, this writes an actual Responses API verification capture 
 ## Local Docker
 
 ```bash
-docker build -t koda-compass-rag .
-docker run -p 8501:8501 -e OPENAI_API_KEY="$OPENAI_API_KEY" koda-compass-rag
+docker build -t k-oda-compass .
+docker run -p 8501:8501 -e OPENAI_API_KEY="$OPENAI_API_KEY" k-oda-compass
 ```
 
 ## Recommended Presentation URL Set

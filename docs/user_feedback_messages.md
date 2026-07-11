@@ -4,8 +4,8 @@
 
 ## 공통 링크 자리
 
-- Streamlit demo: `https://<your-app>.streamlit.app`
-- GitHub: `https://github.com/<your-id>/koda-compass-rag`
+- Streamlit demo: `https://k-oda-compass.streamlit.app`
+- GitHub: `https://github.com/gross08-lab/k-oda-compass`
 
 ## CSO/국제개발협력 관심자용
 

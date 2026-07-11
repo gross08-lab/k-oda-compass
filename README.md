@@ -4,8 +4,8 @@
 
 ## Live Links
 
-- Streamlit Cloud: `https://<your-app>.streamlit.app`
-- GitHub: `https://github.com/<your-id>/koda-compass-rag`
+- Streamlit Cloud: `https://k-oda-compass.streamlit.app`
+- GitHub: `https://github.com/gross08-lab/k-oda-compass`
 - QR: 앱의 `배포` 탭에서 GitHub/Live Demo QR을 생성할 수 있습니다.
 
 ## 핵심 차별점

@@ -5,14 +5,14 @@
 Create a public GitHub repository named:
 
 ```text
-koda-compass-rag
+k-oda-compass
 ```
 
 Then push this local repository:
 
 ```bash
 cd /Users/kimjaeyoung/Documents/Codex/2026-07-07/2026-ai/outputs/KODA_Compass_Streamlit_MVP_v2_1_5_RAG
-git remote add origin https://github.com/<your-id>/koda-compass-rag.git
+git remote add origin https://github.com/gross08-lab/k-oda-compass.git
 git push -u origin main
 ```
 

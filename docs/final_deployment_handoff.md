@@ -19,14 +19,14 @@ Actual Streamlit Cloud deployment cannot be completed from this local package al
 ## Push to GitHub
 
 ```bash
-git remote add origin https://github.com/<your-id>/koda-compass-rag.git
+git remote add origin https://github.com/gross08-lab/k-oda-compass.git
 git push -u origin main
 ```
 
 If a remote already exists:
 
 ```bash
-git remote set-url origin https://github.com/<your-id>/koda-compass-rag.git
+git remote set-url origin https://github.com/gross08-lab/k-oda-compass.git
 git push -u origin main
 ```
 
@@ -51,8 +51,8 @@ OPENAI_MODEL = "gpt-5.2"
 After the URLs are known:
 
 ```bash
-python3 scripts/make_qr.py --url "https://<your-app>.streamlit.app" --output koda_demo_qr.png
-python3 scripts/make_qr.py --url "https://github.com/<your-id>/koda-compass-rag" --output koda_github_qr.png
+python3 scripts/make_qr.py --url "https://k-oda-compass.streamlit.app" --output koda_demo_qr.png
+python3 scripts/make_qr.py --url "https://github.com/gross08-lab/k-oda-compass" --output koda_github_qr.png
 ```
 
 The app also generates downloadable QR codes from the `배포·QR 센터` tab.

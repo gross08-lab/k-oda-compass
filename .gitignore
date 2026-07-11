@@ -15,3 +15,11 @@ venv/
 # IDE
 .vscode/
 .idea/
+
+# Generated and temporary files
+output/
+tmp/
+.DS_Store
+__pycache__/
+*.pyc
+.env
