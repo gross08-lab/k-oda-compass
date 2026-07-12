@@ -730,9 +730,22 @@ def retrieve_rag_evidence(corpus: pd.DataFrame, country: str, sector: str, keywo
     out = out.sort_values("RAG_Score", ascending=False).reset_index(drop=True)
     out["Citation_ID"] = [f"E{i + 1:02d}" for i in range(len(out))]
     semantic = out.apply(lambda evidence: semantic_evidence_classification(evidence, sector, keywords), axis=1)
-    out["Directness"] = semantic.map(lambda result: result[0])
+    out["relevance_type"] = semantic.map(lambda result: result[0])
+    out["proposal_used"] = semantic.map(lambda result: result[2])
+    out["evidence_role"] = out.apply(
+        lambda evidence: {
+            "직접 유사사업": "공공행정 직접 유사사업",
+            "간접 관련 협력경험": "한국의 간접 관련 협력경험",
+            "CPS 국가배경 참고근거": "탄자니아 ODA·공여 국가배경 참고",
+            "공공행정 정책방향 직접근거": "CPS 공공행정 정책방향 직접근거",
+            "분야 불일치 · 직접근거 제외": "분야 불일치로 Proposal 제외",
+            "분야 의미 관련성 낮음 · Proposal 제외": "지원규모 중심·정책방향 관련성 낮아 Proposal 제외",
+        }.get(safe_text(evidence.get("relevance_type")), safe_text(evidence.get("Model_Role")) or "보조 근거"),
+        axis=1,
+    )
+    out["Directness"] = out["relevance_type"]
     out["Is_Direct_Evidence"] = semantic.map(lambda result: result[1])
-    out["Proposal_Use"] = semantic.map(lambda result: result[2])
+    out["Proposal_Use"] = out["proposal_used"]
     out["Sector_Relevance"] = out.apply(
         lambda evidence: wdi_relevance_level(sector, safe_text(evidence.get("Title")), safe_text(evidence.get("Content")))
         if evidence.get("Source_Type") == "WDI"
@@ -759,7 +772,15 @@ def normalize_evidence_citation_prefix(text: str) -> str:
     )
 
 
-def normalize_generated_proposal_language(text: str) -> str:
+def strip_llm_structured_evidence_sections(text: str) -> str:
+    return re.sub(
+        r"(?ms)^#{1,3}\s*(?:Evidence Class[^\n]*|근거 분류[^\n]*)\n.*?(?=^#{1,3}\s|\Z)",
+        "",
+        text or "",
+    ).strip()
+
+
+def normalize_generated_proposal_language(text: str, result: dict[str, object] | None = None) -> str:
     replacements = {
         "KOICA는 관련 정책방향을 제시하며 본 사업을 지원하고자 합니다":
             "CPS는 관련 정책방향을 제시하며 본 사업은 정합성을 예비 검토합니다",
@@ -769,11 +790,44 @@ def normalize_generated_proposal_language(text: str) -> str:
             "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다",
         "실행가능성은 시사로 평가됩니다.":
             "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다.",
+        "1인당 GDP가 낮으므로 교육·건강 여건이 낮고 공공행정 현대화가 긴급하다.":
+            "WDI는 탄자니아의 전반적인 국가 개발여건을 설명하는 보조 신호이며, 공공행정 사업의 직접 수요나 긴급성을 단독으로 입증하지 않는다.",
+        "1인당 GDP가 낮으므로 교육·건강 여건이 낮고 공공행정 현대화가 긴급하다":
+            "WDI는 탄자니아의 전반적인 국가 개발여건을 설명하는 보조 신호이며, 공공행정 사업의 직접 수요나 긴급성을 단독으로 입증하지 않는다",
+        "기존 KOICA 사업을 통해 효과성을 입증할 수 있다.":
+            "기존 KOICA 사업은 한국의 관련 협력경험을 보여주며, 사업 효과성과 현지 수요는 별도로 검증해야 한다.",
+        "기존 KOICA 사업을 통해 효과성을 입증할 수 있다":
+            "기존 KOICA 사업은 한국의 관련 협력경험을 보여주며, 사업 효과성과 현지 수요는 별도로 검증해야 한다",
     }
     normalized = text or ""
     for source, replacement in replacements.items():
         normalized = normalized.replace(source, replacement)
-    return normalize_evidence_citation_prefix(normalized)
+    normalized = normalize_evidence_citation_prefix(normalized)
+    if result:
+        docs = result_evidence_frame(result)
+        excluded_ids = docs.loc[
+            ~docs.get("proposal_used", pd.Series(True, index=docs.index)).fillna(False).astype(bool),
+            "Citation_ID",
+        ].dropna().astype(str).tolist()
+        normalized = "\n".join(
+            line for line in normalized.splitlines()
+            if not any(f"[{citation_id}]" in line for citation_id in excluded_ids)
+        )
+        policy_ids = docs.loc[
+            docs.get("proposal_used", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+            & docs.get("relevance_type", pd.Series(index=docs.index, dtype=str)).eq("공공행정 정책방향 직접근거"),
+            "Citation_ID",
+        ].dropna().astype(str).tolist()
+        if policy_ids:
+            policy_citation = f"[{policy_ids[0]}]"
+            lines = []
+            for line in normalized.splitlines():
+                if "정책정합성" in line and re.search(r"\[E\d{2}\]", line):
+                    line = re.sub(r"\s*\[E\d{2}\](?:\s*,?\s*\[E\d{2}\])*", "", line).rstrip()
+                    line = line.rstrip(".") + f" {policy_citation}."
+                lines.append(line)
+            normalized = "\n".join(lines)
+    return normalized
 
 
 def format_rag_citations(docs: pd.DataFrame) -> str:
@@ -1845,6 +1899,9 @@ def build_builder_result(
             "source_type": safe_text(item.get("Source_Type")),
             "country": safe_text(item.get("Country_KR")),
             "sector": safe_text(item.get("Sector_Group")),
+            "proposal_used": bool(item.get("proposal_used", True)),
+            "relevance_type": safe_text(item.get("relevance_type")),
+            "evidence_role": safe_text(item.get("evidence_role")),
         }
         for item in evidence
     ]
@@ -1883,20 +1940,23 @@ def result_assumption_lines(result: dict[str, object]) -> list[str]:
 
 
 def evidence_class_summary_table(docs: pd.DataFrame) -> str:
+    proposal_used = docs.get("proposal_used", pd.Series(True, index=docs.index)).fillna(False).astype(bool)
+    docs = docs.loc[proposal_used]
     lines = [
-        "| Evidence ID | Evidence Class | 출처유형 | 문서에서의 역할 |",
+        "| Evidence ID | Evidence Class | 관련성 | 문서에서의 역할 |",
         "|---|---|---|---|",
     ]
     for _, evidence in docs.iterrows():
-        role = safe_text(evidence.get("Model_Role")) or "역할 메타데이터 없음"
+        role = safe_text(evidence.get("evidence_role")) or "역할 메타데이터 없음"
         lines.append(
             f"| {safe_text(evidence.get('Citation_ID'))} | {safe_text(evidence.get('Evidence_Class'))} | "
-            f"{safe_text(evidence.get('Source_Type'))} | {role.replace('|', '/')} |"
+            f"{safe_text(evidence.get('relevance_type'))} | {role.replace('|', '/')} |"
         )
     return "\n".join(lines)
 
 
 def structured_result_appendix(result: dict[str, object], docs: pd.DataFrame) -> str:
+    docs = result_evidence_frame(result, docs)
     return f"""## Evidence Class 요약
 {evidence_class_summary_table(docs)}
 
@@ -2074,18 +2134,20 @@ def build_rag_markdown_proposal(
     portfolio_cites = citation_ids(docs, "Sector Portfolio", 1)
     contribution = score_contribution_table(row, weights)
     top_contrib = contribution.head(3)
-    direct_mask = docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
-    proposal_mask = docs.get("Proposal_Use", pd.Series(True, index=docs.index)).fillna(False).astype(bool)
+    direct_mask = docs.get("relevance_type", pd.Series(index=docs.index, dtype=str)).isin(
+        {"직접근거", "직접 유사사업", "공공행정 정책방향 직접근거"}
+    )
+    proposal_mask = docs.get("proposal_used", pd.Series(True, index=docs.index)).fillna(False).astype(bool)
     cps_docs = docs.loc[(docs["Source_Type"] == "CPS PDF") & direct_mask & proposal_mask].head(2)
     cps_background_docs = docs.loc[
         (docs["Source_Type"] == "CPS PDF")
-        & docs["Directness"].eq("CPS 국가배경 참고근거")
+        & docs["relevance_type"].eq("CPS 국가배경 참고근거")
         & proposal_mask
     ].head(1)
     koica_docs = docs.loc[(docs["Source_Type"] == "KOICA Project") & direct_mask & proposal_mask].head(4)
     koica_indirect_docs = docs.loc[
         (docs["Source_Type"] == "KOICA Project")
-        & docs["Directness"].eq("간접 관련 협력경험")
+        & docs["relevance_type"].eq("간접 관련 협력경험")
         & proposal_mask
     ].head(2)
     wdi_docs = docs.loc[docs["Source_Type"] == "WDI"].head(3)
@@ -2095,20 +2157,20 @@ def build_rag_markdown_proposal(
     indirect_project_cites = citation_ids(koica_indirect_docs, limit=2)
 
     cps_lines = [
-        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 260)}"
+        f"- [{d['Citation_ID']}] **{d['relevance_type']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 260)}"
         for _, d in cps_docs.iterrows()
     ] or ["- 선택 국가·분야와 직접 일치하는 CPS 청크가 없어 최신 CPS 원문에서 추가 확인이 필요합니다."]
     cps_background_lines = [
-        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 180)}"
+        f"- [{d['Citation_ID']}] **{d['relevance_type']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 180)}"
         for _, d in cps_background_docs.iterrows()
     ]
     koica_lines = [
-        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Original_Title']}** · 사업기간 {d['Project_Period']} · "
+        f"- [{d['Citation_ID']}] **{d['relevance_type']}** · **{d['Original_Title']}** · 사업기간 {d['Project_Period']} · "
         f"관측 연도 {d['Observed_Years']} · 원자료 {fmt_int(d['Record_Count'])}건 · {d['Duplicate_Status']}"
         for _, d in koica_docs.iterrows()
     ] or ["- 선택 국가·분야의 직접 KOICA 사업근거가 제한적이므로 현지 수요조사와 원자료 재확인이 필요합니다."]
     koica_indirect_lines = [
-        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Original_Title']}** · "
+        f"- [{d['Citation_ID']}] **{d['relevance_type']}** · **{d['Original_Title']}** · "
         f"관측 연도 {d['Observed_Years']} · 직접 유사사업이 아닌 협력경험 참고"
         for _, d in koica_indirect_docs.iterrows()
     ]
@@ -2140,8 +2202,8 @@ def build_rag_markdown_proposal(
 
 ## 2. 핵심 판단
 - {country}의 v2.1 국가 우선검토 점수는 **{fmt_number(row.get('K_ODA_Opportunity_Score_V21'))}/100**이며 후보유형은 **{compact_candidate_label(row.get('Candidate_Type_V21'))}**입니다 {score_cites}.
-- 개발수요와 정책정합성은 높지만 실행가능성 보완이 필요한 예비 검토 대상입니다. 사업화 전 현지 파트너 역량, 제도환경, 집행위험과 참여 의향을 추가 검증해야 합니다 {policy_cites}.
-- {sector} 분야의 직접 정책방향은 선택 분야와 일치하는 CPS 정책원문에서 확인합니다 {cps_cites}.
+- CPS 정책방향과의 정책정합성은 선택 분야와 일치하는 정책원문에서 예비 확인합니다 {cps_cites}.
+- 실행가능성은 공개된 정책·실행환경 파생점수에 근거한 보조 판단이며, 현지 파트너 역량과 집행위험을 추가 검증해야 합니다 {policy_cites}.
 - E03 디지털 기록관리 사업은 직접 유사사업이며, E01·E02는 간접 관련 협력경험으로만 참고합니다 {project_cites} {indirect_project_cites}. 대상국의 현재 사업수요는 CPS 정책방향과 현지 수요조사를 통해 별도로 검증해야 합니다.
 
 ## Evidence Class 요약
@@ -2171,7 +2233,7 @@ def build_rag_markdown_proposal(
 {chr(10).join(wdi_lines)}
 
 ## 7. Derived Evidence · 정책·실행환경 보조지표
-- 정책정합성 {fmt_number(row.get('Policy_Alignment_Score_V21'))}, 실행가능성 {fmt_number(row.get('Risk_Feasibility_Score_V21'))}. 해당 값은 현지조사나 기관 실사를 대체하지 않는 파생점수입니다 {policy_cites}.
+- 정책·실행환경 파생점수는 정책 일치도 {fmt_number(row.get('Policy_Alignment_Score_V21'))}, 실행가능성 {fmt_number(row.get('Risk_Feasibility_Score_V21'))}이며 현지조사나 기관 실사를 대체하지 않습니다 {policy_cites}.
 - 기존 KOICA 분야 집계는 과거 협력경험을 보여주며 현재 사업 타당성과 동일한 의미가 아닙니다 {portfolio_cites}.
 
 ## 8. 예비 사업설계 방향
@@ -2225,7 +2287,10 @@ def build_policy_brief(
     docs = result_evidence_frame(result, docs)
     assumptions = normalize_design_assumptions(design_assumptions)
     direct_docs = docs.loc[
-        docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+        docs.get("proposal_used", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+        & docs.get("relevance_type", pd.Series(index=docs.index, dtype=str)).isin(
+            {"직접근거", "직접 유사사업", "공공행정 정책방향 직접근거"}
+        )
     ].head(4)
     class_summary = evidence_class_summary_table(docs.head(8))
     assumption_notice = safe_text(result.get("assumption_notice")) or ASSUMPTION_NOTICE
@@ -2441,7 +2506,9 @@ def builder_output_quality_report(
 ) -> tuple[str, pd.DataFrame]:
     result = result or build_builder_result(country, sector, docs)
     docs = result_evidence_frame(result, docs)
-    direct_mask = docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+    direct_mask = docs.get("relevance_type", pd.Series(index=docs.index, dtype=str)).isin(
+        {"직접근거", "직접 유사사업", "공공행정 정책방향 직접근거"}
+    )
     direct = docs.loc[direct_mask]
     evidence_ids = set(docs.get("Citation_ID", pd.Series(dtype=str)).dropna().astype(str))
     cited_ids = set(re.findall(r"\[(E\d{2})\]", proposal + "\n" + brief))
@@ -2452,13 +2519,13 @@ def builder_output_quality_report(
     cross_portfolio = int(((direct.get("Source_Type", pd.Series(index=direct.index, dtype=str)) == "Sector Portfolio") & (direct.get("Sector_Group", pd.Series(index=direct.index, dtype=str)) != sector)).sum())
     excluded_ids = set(
         docs.loc[
-            ~docs.get("Proposal_Use", pd.Series(True, index=docs.index)).fillna(False).astype(bool),
+            ~docs.get("proposal_used", pd.Series(True, index=docs.index)).fillna(False).astype(bool),
             "Citation_ID",
         ].dropna().astype(str)
     )
     excluded_citations = sorted(cited_ids & excluded_ids)
     valid_direct_labels = {"직접근거", "직접 유사사업", "공공행정 정책방향 직접근거"}
-    semantic_direct_mismatch = int((~direct.get("Directness", pd.Series(index=direct.index, dtype=str)).isin(valid_direct_labels)).sum()) if not direct.empty else 0
+    semantic_direct_mismatch = int((~direct.get("relevance_type", pd.Series(index=direct.index, dtype=str)).isin(valid_direct_labels)).sum()) if not direct.empty else 0
     duplicate_groups = int(pd.to_numeric(docs.loc[docs.get("Source_Type") == "KOICA Project", "Record_Count"], errors="coerce").fillna(1).gt(1).sum()) if "Record_Count" in docs else 0
     combined = "\n".join([proposal, brief, evidence_pack])
     internal_names = re.findall(r"lower_is_higher_need|higher_is_higher_need|\bproxy\b", combined, flags=re.IGNORECASE)
@@ -3615,7 +3682,11 @@ def render_builder(data):
         row = get_country_row(master, country)
         rag_docs = retrieve_rag_evidence(corpus, country, sector, keywords, row, top_k=16)
         builder_result = build_builder_result(country, sector, rag_docs, design_assumptions)
-        prompt = build_rag_prompt(country, sector, user_type, scale, keywords, row, rag_docs, weights, design_assumptions)
+        proposal_docs = result_evidence_frame(builder_result, rag_docs)
+        proposal_docs = proposal_docs.loc[
+            proposal_docs.get("proposal_used", pd.Series(False, index=proposal_docs.index)).fillna(False).astype(bool)
+        ]
+        prompt = build_rag_prompt(country, sector, user_type, scale, keywords, row, proposal_docs, weights, design_assumptions)
         local_proposal = build_rag_markdown_proposal(
             country, sector, user_type, scale, keywords, row, rag_docs, weights, design_assumptions, builder_result
         )
@@ -3627,18 +3698,19 @@ def render_builder(data):
             if llm_text:
                 llm_used = True
                 builder_result["llm_draft"] = llm_text
-                proposal = llm_text.rstrip() + "\n\n" + structured_result_appendix(builder_result, rag_docs)
+                llm_body = strip_llm_structured_evidence_sections(llm_text)
+                proposal = llm_body + "\n\n" + structured_result_appendix(builder_result, rag_docs)
 
         generation_mode = "OpenAI LLM + RAG" if llm_used else "Local RAG"
         builder_result["generation_mode"] = generation_mode
         generation_metadata = f"\n\n## 생성 메타데이터\n- 생성모드: {generation_mode}\n- 모델 버전: {MODEL_VERSION}\n- 근거 범위: {country} · {sector}\n"
-        proposal = normalize_generated_proposal_language(proposal) + generation_metadata
+        proposal = normalize_generated_proposal_language(proposal, builder_result) + generation_metadata
         evidence_pack = normalize_evidence_citation_prefix(build_rag_evidence_pack(
             country, sector, keywords, rag_docs, design_assumptions, builder_result
         )) + generation_metadata
         brief = normalize_generated_proposal_language(build_policy_brief(
             country, sector, row, rag_docs, design_assumptions, builder_result
-        )) + generation_metadata
+        ), builder_result) + generation_metadata
         proposal_pdf = markdown_to_pdf_bytes("K-ODA Compass 근거 기반 AI 사업제안서", proposal)
         brief_pdf = markdown_to_pdf_bytes(f"K-ODA Compass {country} {sector} 1-page Brief", brief)
         quality_status, quality_report = builder_output_quality_report(

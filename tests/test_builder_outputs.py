@@ -116,6 +116,11 @@ def test_public_admin_semantic_relevance_overrides_csv_sector_label(builder_arti
     cps_direct = docs.loc[(docs["Source_Type"] == "CPS PDF") & docs["Is_Direct_Evidence"]]
     assert koica_direct.index.tolist() == ["E03"]
     assert cps_direct.index.tolist() == ["E09"]
+    assert docs.loc["E01", "relevance_type"] == "간접 관련 협력경험"
+    assert docs.loc["E03", "evidence_role"] == "공공행정 직접 유사사업"
+    assert bool(docs.loc["E05", "proposal_used"])
+    assert not bool(docs.loc["E04", "proposal_used"])
+    assert not bool(docs.loc["E10", "proposal_used"])
 
 
 def test_proposal_uses_only_semantically_relevant_direct_evidence(builder_artifacts: dict) -> None:
@@ -260,3 +265,37 @@ def test_citation_prefix_and_requested_language_are_normalized() -> None:
     assert "[5]" not in normalized
     assert "CPS는 관련 정책방향을 제시하며 본 사업은 정합성을 예비 검토합니다" in normalized
     assert "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다" in normalized
+
+
+def test_llm_output_uses_normalized_evidence_for_appendix_and_claims(builder_artifacts: dict) -> None:
+    result = builder_artifacts["result"]
+    docs = builder_artifacts["docs"]
+    appendix = app.structured_result_appendix(result, docs)
+
+    assert "| E01 | Source Evidence | 간접 관련 협력경험 | 한국의 간접 관련 협력경험 |" in appendix
+    assert "| E02 | Source Evidence | 간접 관련 협력경험 | 한국의 간접 관련 협력경험 |" in appendix
+    assert "| E03 | Source Evidence | 직접 유사사업 | 공공행정 직접 유사사업 |" in appendix
+    assert "| E05 | Source Evidence | CPS 국가배경 참고근거 | 탄자니아 ODA·공여 국가배경 참고 |" in appendix
+    assert "| E09 | Source Evidence | 공공행정 정책방향 직접근거 | CPS 공공행정 정책방향 직접근거 |" in appendix
+    assert "| E04 |" not in appendix
+    assert "| E10 |" not in appendix
+
+    llm_text = (
+        "정책정합성은 CPS에서 확인된다 [E05], [E09].\n"
+        "1인당 GDP가 낮으므로 교육·건강 여건이 낮고 공공행정 현대화가 긴급하다. [E13]\n"
+        "기존 KOICA 사업을 통해 효과성을 입증할 수 있다. [E03]\n"
+        "농업 인프라 사업도 직접근거다 [E04].\n"
+        "## Evidence Class 요약\n"
+        "| Evidence ID | Evidence Class |\n|---|---|\n| E04 | Source Evidence |\n"
+        "## 다음 섹션\n본문"
+    )
+    stripped = app.strip_llm_structured_evidence_sections(llm_text)
+    normalized = app.normalize_generated_proposal_language(stripped, result)
+    policy_line = normalized.splitlines()[0]
+
+    assert "[E09]" in policy_line
+    assert "[E05]" not in policy_line
+    assert "공공행정 사업의 직접 수요나 긴급성을 단독으로 입증하지 않는다" in normalized
+    assert "사업 효과성과 현지 수요는 별도로 검증해야 한다" in normalized
+    assert "[E04]" not in normalized
+    assert "| E04 |" not in stripped
