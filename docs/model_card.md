@@ -7,7 +7,7 @@ K-ODA Compass RAG is an evidence-grounded AI assistant for preliminary ODA plann
 ## Components
 
 - Score model: weighted decision model combining development need, Korea cooperation base, sector fit, opportunity gap, policy alignment, risk feasibility, and data reliability.
-- Retriever: local token-based RAG search over KOICA projects, WDI indicators, CPS PDF chunks, sector portfolios, score rows, and policy/risk proxy rows.
+- Retriever: deterministic lexical retrieval is the operating default. Optional local embedding, hybrid, and metadata-filtered hybrid modes rerank CPS chunks and preserve lexical fallback.
 - Generator: local citation-preserving proposal generator.
 - Optional LLM: OpenAI Responses API, activated only when `OPENAI_API_KEY` is configured.
 
@@ -28,7 +28,10 @@ K-ODA Compass RAG is an evidence-grounded AI assistant for preliminary ODA plann
 
 ## Limitations
 
-- Current RAG retrieval is lexical and deterministic, not embedding-based.
+- The internal retrieval Gold Set covers 10 independently checked CPS pages expanded into 60 query forms; it is not external validation or 60 independent page reviews.
+- On the frozen test split, lexical outperformed the optional embedding and hybrid modes, so semantic search is not presented as universally superior.
+- Negative metadata-query rejection was 0% in this benchmark; country and sector filters remain required safeguards.
+- The upstream raw-data formulas for the seven stored component scores are not fully preserved. Only the stored-component weighted aggregation is VERIFIED end to end.
 - Text-layer CPS PDFs are parsed into page-level chunks; image-only PDFs require OCR before full coverage.
 - WDI latest-year gaps and policy/risk proxy gaps remain visible in the app.
 - Final ODA decisions require official policy review and local validation.

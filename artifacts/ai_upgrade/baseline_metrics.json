@@ -1,0 +1,73 @@
+{
+  "branch": "ai-evidence-upgrade",
+  "commit": "2cc64ac549526d0ff3f256598296a512b1def1a7",
+  "working_tree_before_upgrade": "?? .cache/\n?? artifacts/\n?? scripts/capture_ai_upgrade_baseline.py",
+  "pytest": {
+    "passed": 23,
+    "command": "python3 -m pytest -q",
+    "status": "PASS"
+  },
+  "master_country_count": 50,
+  "ranked_country_count": 50,
+  "score_reproduction": {
+    "passed_countries": 50,
+    "country_count": 50,
+    "max_absolute_error": 0.0049999999999954525,
+    "tolerance": 0.01
+  },
+  "legacy_retrieval_mode": "lexical/token",
+  "legacy_retrieval_scenarios": 3,
+  "legacy_retrieval_rows": 48,
+  "local_rag": {
+    "openai_key_present": false,
+    "fallback_text_is_none": true,
+    "status": "OPENAI_API_KEY가 없어 로컬 RAG 생성으로 전환했습니다."
+  },
+  "output_types": [
+    {
+      "file": "artifacts/ai_upgrade/baseline_outputs/baseline_proposal.md",
+      "bytes": 8580,
+      "valid": true
+    },
+    {
+      "file": "artifacts/ai_upgrade/baseline_outputs/baseline_brief.md",
+      "bytes": 3056,
+      "valid": true
+    },
+    {
+      "file": "artifacts/ai_upgrade/baseline_outputs/baseline_evidence_pack.md",
+      "bytes": 24676,
+      "valid": true
+    },
+    {
+      "file": "artifacts/ai_upgrade/baseline_outputs/baseline_proposal.pdf",
+      "bytes": 100502,
+      "valid": true
+    },
+    {
+      "file": "artifacts/ai_upgrade/baseline_outputs/baseline_brief.pdf",
+      "bytes": 82219,
+      "valid": true
+    }
+  ],
+  "top_level_views": {
+    "개요": true,
+    "순위": true,
+    "프로필": true,
+    "분야 우선검토": true,
+    "AI Builder": true,
+    "근거·재현성": true,
+    "AI·모델 검증": true,
+    "심사용 요약": true,
+    "배포": true
+  },
+  "all_nine_views_verified": true,
+  "baseline_pdf": {
+    "file": "artifacts/ai_upgrade/KODA_Compass_Proposal_BASELINE.pdf",
+    "sha256": "22756c2f7197e8f55427c03bd272f8ecde6c6a1619de5dd2f83c06e168512ec6"
+  },
+  "readme_backup": {
+    "file": "artifacts/ai_upgrade/README_BASELINE.md",
+    "sha256": "08c0b1db780f653afb889e18e0d54b54e74a83f2ee18d58d9a431fc012ca20a0"
+  }
+}

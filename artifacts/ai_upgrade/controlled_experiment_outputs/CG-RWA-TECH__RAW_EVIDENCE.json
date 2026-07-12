@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-RWA-TECH",
+  "condition": "RAW_EVIDENCE",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.258054+00:00",
+  "prompt_sha256": "9ed540829001642cf97c57315ddb99d378705a30745b7e704e8a28c8f371047e",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

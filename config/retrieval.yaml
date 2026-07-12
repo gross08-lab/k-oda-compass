@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "default_mode": "lexical",
+  "source": {
+    "chunk_file": "KODA_cps_pdf_chunks.csv"
+  },
+  "embedding": {
+    "provider": "fastembed",
+    "model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "runtime_version": "0.8.0",
+    "dimension": 384,
+    "license": "Apache-2.0",
+    "cache_dir": ".cache/fastembed",
+    "threads": 2
+  },
+  "index": {
+    "file": "artifacts/ai_upgrade/embedding_index.npz",
+    "metadata": "artifacts/ai_upgrade/embedding_index_metadata.json"
+  },
+  "hybrid": {
+    "normalization": "minmax",
+    "lexical_weight": 0.2,
+    "embedding_weight": 0.8,
+    "dev_candidates": [0.2, 0.4, 0.5, 0.6, 0.8]
+  },
+  "benchmark": {
+    "top_k": 5,
+    "dev_fraction": 0.3,
+    "split_seed": "koda-retrieval-v1"
+  }
+}

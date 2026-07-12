@@ -1,0 +1,19 @@
+{
+  "version": "2.1-lineage-audit",
+  "master_file": "KODA_master_score_top50_v21.csv",
+  "weights_file": "KODA_v21_score_weights.csv",
+  "country_key": "Country_KR",
+  "iso3_key": "WDI_Country_Code",
+  "stored_score": "K_ODA_Opportunity_Score_V21",
+  "stored_rank": "Rank_V21",
+  "tolerance": 0.01,
+  "components": {
+    "Development Need": {"column": "Development_Need_Score", "lineage_status": "PARTIAL"},
+    "Korea Cooperation Base": {"column": "Korea_Coop_Base_Score_V2", "lineage_status": "PARTIAL"},
+    "Sector Fit": {"column": "Sector_Fit_Score_V2", "lineage_status": "PARTIAL"},
+    "Opportunity Gap": {"column": "Opportunity_Gap_Score_V2", "lineage_status": "UNRESOLVED"},
+    "Policy Alignment": {"column": "Policy_Alignment_Score_V21", "lineage_status": "PARTIAL"},
+    "Risk Feasibility": {"column": "Risk_Feasibility_Score_V21", "lineage_status": "PARTIAL"},
+    "Data Reliability": {"column": "Data_Reliability_Score_V21", "lineage_status": "PARTIAL"}
+  }
+}

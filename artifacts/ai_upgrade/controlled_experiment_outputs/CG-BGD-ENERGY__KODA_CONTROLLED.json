@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-BGD-ENERGY",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.260372+00:00",
+  "prompt_sha256": "960b12c7f334cb57f976590b035e8cbad7a6f0f4919505da6a69f0efd2ec8636",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

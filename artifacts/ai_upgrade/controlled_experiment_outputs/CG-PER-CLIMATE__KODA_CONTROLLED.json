@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-PER-CLIMATE",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.262887+00:00",
+  "prompt_sha256": "11a79019927b1ba2437e89b7295bf558ff1428d16362e8f01d2b6be645560db7",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

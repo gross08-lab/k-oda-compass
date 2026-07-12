@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-TZA-ENERGY",
+  "condition": "GENERIC",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.258614+00:00",
+  "prompt_sha256": "9c75999c180c905e5c7109dbc64a951843860c1e7a1facbe5082d0ae6d887846",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

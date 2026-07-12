@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-RWA-TECH",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.258369+00:00",
+  "prompt_sha256": "e344e2df834e896af287a04acc07a2b5eaa37ccde38a33766f3382f8b43329d4",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

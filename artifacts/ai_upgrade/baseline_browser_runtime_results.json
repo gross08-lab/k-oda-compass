@@ -1,0 +1,31 @@
+{
+  "app_started": true,
+  "app_result": "Local Streamlit root loaded without OPENAI_API_KEY and displayed the overview.",
+  "root_screen": "",
+  "views": {
+    "개요": true,
+    "순위": true,
+    "프로필": true,
+    "분야 우선검토": true,
+    "AI Builder": true,
+    "근거·재현성": true,
+    "AI·모델 검증": true,
+    "심사용 요약": true,
+    "배포": true
+  },
+  "navigation_screen": "",
+  "ranking_verified": true,
+  "ranking_result": "Ranking view reported 50 filtered countries; the on-demand full table checkbox rendered and exposed the Top 50 CSV download.",
+  "ranking_screen": "",
+  "country_exploration": true,
+  "country_result": "Profile country selector changed from Tanzania to Rwanda and recalculated the displayed contribution total.",
+  "profile_screen": "",
+  "sector_exploration": true,
+  "sector_result": "Sector review opened with Tanzania and public-administration decision-support content.",
+  "sector_screen": "",
+  "builder_verified": true,
+  "builder_result": "Local RAG generated Proposal, Brief, Evidence Pack, Proposal PDF and Brief PDF download controls.",
+  "limitations_verified": true,
+  "limitations_result": "Evidence view displayed version/reproducibility, limitations, and CPS OCR coverage 663/921 with 258 OCR targets.",
+  "limitations_screen": ""
+}

@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-IDN-ADMIN",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.260933+00:00",
+  "prompt_sha256": "b3bb4539c0da61c7f0553a60e1fbf109b622c2e6fff26369270971a87d7797d1",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

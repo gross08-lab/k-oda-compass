@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-IDN-ADMIN",
+  "condition": "GENERIC",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.260567+00:00",
+  "prompt_sha256": "845ce43005ffc858b366ee7820c67e4451cb936cb38356f5c55712b99c4aa9a1",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

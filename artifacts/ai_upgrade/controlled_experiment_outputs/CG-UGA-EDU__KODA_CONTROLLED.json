@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-UGA-EDU",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.262428+00:00",
+  "prompt_sha256": "4ba6d1c10ed0ed70992b888e4af2a485aff87556feebe7332a8e9a7f62befe7a",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

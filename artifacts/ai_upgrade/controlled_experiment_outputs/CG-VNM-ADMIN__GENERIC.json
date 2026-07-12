@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-VNM-ADMIN",
+  "condition": "GENERIC",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.259422+00:00",
+  "prompt_sha256": "daa291e7fbc3b3febc7376462bca3632f013ba95d573ace4f96bb2cc89c7a1d8",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

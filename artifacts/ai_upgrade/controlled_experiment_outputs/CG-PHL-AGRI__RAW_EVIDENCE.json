@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-PHL-AGRI",
+  "condition": "RAW_EVIDENCE",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.263213+00:00",
+  "prompt_sha256": "e3094e445a84064b7ef4cf7bb726d4a5e859cf0befebc5a541b0b56be9aee4ec",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

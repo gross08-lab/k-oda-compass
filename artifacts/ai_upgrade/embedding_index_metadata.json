@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-07-12T17:00:27Z",
+  "source_file": "KODA_cps_pdf_chunks.csv",
+  "source_sha256": "d0b48829df14e2b1fc2d4af7e3942198243320ec8cc10bc37c5ff854a963986c",
+  "source_rows": 806,
+  "valid_rows": 806,
+  "model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "fastembed_version": "0.8.0",
+  "dimension": 384,
+  "license": "Apache-2.0",
+  "pooling_note": "FastEmbed 0.8.0 mean-pooling implementation; fixed for this benchmark snapshot",
+  "build_seconds": 37.953676,
+  "vector_bytes_uncompressed": 1238016,
+  "python": "3.14.6",
+  "platform": "macOS-14.1.2-arm64-arm-64bit-Mach-O",
+  "model_files": [
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/files_metadata.json",
+      "bytes": 726,
+      "sha256": "d653b8f4e49fe647bd5b05a384d0674d0ebe260185ab5d7138c130a02aa35e7e"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/snapshots/faf4aa4225822f3bc6376869cb1164e8e3feedd0/config.json",
+      "bytes": 673,
+      "sha256": "c8ec081fdad2df991bf5abbf18418fec7a5cdaa421f60ffb060a30040b8c376f"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/snapshots/faf4aa4225822f3bc6376869cb1164e8e3feedd0/model_optimized.onnx",
+      "bytes": 235052644,
+      "sha256": "634d0f66c29dc934c8fa72b8a4fe91dd4d420a22f1d82a241058d4316e659a99"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/snapshots/faf4aa4225822f3bc6376869cb1164e8e3feedd0/special_tokens_map.json",
+      "bytes": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/snapshots/faf4aa4225822f3bc6376869cb1164e8e3feedd0/tokenizer.json",
+      "bytes": 17083009,
+      "sha256": "fa685fc160bbdbab64058d4fc91b60e62d207e8dc60b9af5c002c5ab946ded00"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/snapshots/faf4aa4225822f3bc6376869cb1164e8e3feedd0/tokenizer_config.json",
+      "bytes": 1416,
+      "sha256": "0666eebf692422757e1dddf3c9fb1ded73ba3dc726c5828671fc89e45bf3609f"
+    },
+    {
+      "relative_file": "models--qdrant--paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/trees/faf4aa4225822f3bc6376869cb1164e8e3feedd0.json",
+      "bytes": 1551,
+      "sha256": "8554c64e76b7108fe08d2be4ce180e285cbd8b40f4ca9113a5d5ec903cb7cd54"
+    }
+  ],
+  "index_file": "artifacts/ai_upgrade/embedding_index.npz",
+  "index_bytes": 1150060
+}

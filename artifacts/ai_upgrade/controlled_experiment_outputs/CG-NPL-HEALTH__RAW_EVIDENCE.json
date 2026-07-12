@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-NPL-HEALTH",
+  "condition": "RAW_EVIDENCE",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.261271+00:00",
+  "prompt_sha256": "20f9b04f45127e6f7546352dd6ae74f3aee02a38d61a70b3bb555f243b7a381d",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

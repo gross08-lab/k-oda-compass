@@ -1,0 +1,152 @@
+{
+  "pdf": "KODA_Compass_Proposal_FINAL_SUBMISSION_AI_UPGRADE.pdf",
+  "bytes": 7714262,
+  "pages": 10,
+  "page_sizes": [
+    [
+      595.3,
+      841.89
+    ],
+    [
+      595.3,
+      841.89
+    ],
+    [
+      595.3,
+      841.89
+    ],
+    [
+      595.3,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ],
+    [
+      595.28,
+      841.89
+    ]
+  ],
+  "all_a4": true,
+  "page_text_characters": [
+    1162,
+    1194,
+    1364,
+    1751,
+    161,
+    43,
+    1562,
+    1709,
+    1533,
+    1643
+  ],
+  "rendered_pages": 10,
+  "rendered_nonblank": true,
+  "image_checks": [
+    {
+      "file": "page-01.png",
+      "extrema": [
+        0,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-02.png",
+      "extrema": [
+        0,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-03.png",
+      "extrema": [
+        31,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-04.png",
+      "extrema": [
+        31,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-05.png",
+      "extrema": [
+        27,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-06.png",
+      "extrema": [
+        8,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-07.png",
+      "extrema": [
+        52,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-08.png",
+      "extrema": [
+        52,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-09.png",
+      "extrema": [
+        52,
+        255
+      ],
+      "nonblank": true
+    },
+    {
+      "file": "page-10.png",
+      "extrema": [
+        0,
+        255
+      ],
+      "nonblank": true
+    }
+  ],
+  "annotation_urls": [
+    "https://github.com/gross08-lab/k-oda-compass",
+    "https://k-oda-compass.streamlit.app"
+  ],
+  "live_demo_link_present": true,
+  "github_link_present": true,
+  "forbidden_hits": {},
+  "secret_hits": []
+}

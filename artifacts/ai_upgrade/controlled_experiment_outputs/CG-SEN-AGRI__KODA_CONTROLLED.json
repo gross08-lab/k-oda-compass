@@ -1,0 +1,20 @@
+{
+  "case_id": "CG-SEN-AGRI",
+  "condition": "KODA_CONTROLLED",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.261904+00:00",
+  "prompt_sha256": "55346707d3f25e60e20fb057b5e2de2203b7f97e24259f17bc18b74fe3e280ad",
+  "evidence_ids": [
+    "E01"
+  ],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

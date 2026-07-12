@@ -35,7 +35,15 @@ APP_VERSION = "v2.1.5"
 MODEL_VERSION = "v2.1"
 DATA_SNAPSHOT = "KOICA 2019~2024 · WDI 최신값 최대 2025 · 정책·실행환경 2023-06-14"
 INTERNAL_TEST_DATE = "2026-07-11"
-PYTEST_RESULT = "16 passed"
+PYTEST_RESULT = "38 passed"
+RETRIEVAL_BENCHMARK_VERSION = "internal-gold-v1"
+RETRIEVAL_DEFAULT_MODE = "lexical"
+RETRIEVAL_MODE_LABELS = {
+    "lexical": "Lexical (운영 기본)",
+    "embedding": "Embedding (선택형)",
+    "hybrid": "Hybrid (선택형)",
+    "hybrid_filtered": "Hybrid + 국가·분야 필터 (선택형)",
+}
 
 DATA_FILES = {
     "master": "KODA_master_score_top50_v21.csv",
@@ -170,6 +178,14 @@ def get_plotly_express():
     import plotly.express as px
 
     return px
+
+
+@st.cache_resource(show_spinner=False, ttl=900, max_entries=1)
+def load_optional_retrieval_engine():
+    """Load the CPS retrieval engine lazily; the embedding model loads only on explicit use."""
+    from src.retrieval import RetrievalEngine
+
+    return RetrievalEngine(APP_DIR)
 
 
 def fmt_number(value, digits: int = 1, suffix: str = "") -> str:
@@ -753,6 +769,101 @@ def retrieve_rag_evidence(corpus: pd.DataFrame, country: str, sector: str, keywo
         axis=1,
     )
     return out
+
+
+def retrieve_rag_evidence_with_mode(
+    corpus: pd.DataFrame,
+    country: str,
+    sector: str,
+    keywords: str,
+    row: pd.Series,
+    retrieval_mode: str,
+    top_k: int = 14,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Apply optional CPS semantic ranking while preserving the multi-source evidence pack."""
+    baseline = retrieve_rag_evidence(corpus, country, sector, keywords, row, top_k=top_k)
+    status: dict[str, object] = {
+        "requested_mode": retrieval_mode,
+        "effective_mode": "lexical",
+        "fallback": False,
+        "fallback_reason": "",
+        "result_count": len(baseline),
+    }
+    if retrieval_mode == "lexical":
+        baseline["Retrieval_Mode"] = "lexical"
+        baseline["Retrieval_Rank"] = range(1, len(baseline) + 1)
+        return baseline, status
+
+    try:
+        from src.retrieval import RetrievalQuery
+
+        request = RetrievalQuery(
+            query_id=f"builder-{country}-{sector}",
+            query_text=f"{keywords} {safe_text(row.get('Recommended_Service_Angle_V2'))}",
+            country=country,
+            sector=sector,
+            evidence_class="Source Evidence",
+        )
+        search_rows, engine_status = load_optional_retrieval_engine().search(
+            request,
+            retrieval_mode,
+            top_k=min(5, top_k),
+            allow_fallback=True,
+        )
+        status.update(engine_status)
+    except Exception as exc:
+        status.update(
+            {
+                "effective_mode": "lexical",
+                "fallback": True,
+                "fallback_reason": f"{type(exc).__name__}: 선택형 검색을 초기화하지 못했습니다.",
+            }
+        )
+        baseline["Retrieval_Mode"] = "lexical"
+        baseline["Retrieval_Rank"] = range(1, len(baseline) + 1)
+        return baseline, status
+
+    if status.get("effective_mode") == "lexical" or not search_rows:
+        baseline["Retrieval_Mode"] = "lexical"
+        baseline["Retrieval_Rank"] = range(1, len(baseline) + 1)
+        return baseline, status
+
+    ranked_ids = [safe_text(item.get("chunk_id")) for item in search_rows]
+    cps_pool = corpus.loc[
+        (corpus["Source_Type"] == "CPS PDF") & corpus.get("Chunk_ID", pd.Series(index=corpus.index, dtype=str)).isin(ranked_ids)
+    ].copy()
+    if cps_pool.empty:
+        status.update({"effective_mode": "lexical", "fallback": True, "fallback_reason": "선택 근거를 앱 코퍼스에서 연결하지 못했습니다."})
+        baseline["Retrieval_Mode"] = "lexical"
+        baseline["Retrieval_Rank"] = range(1, len(baseline) + 1)
+        return baseline, status
+
+    rank_lookup = {chunk_id: rank for rank, chunk_id in enumerate(ranked_ids, start=1)}
+    cps_pool["Retrieval_Rank"] = cps_pool["Chunk_ID"].map(rank_lookup)
+    cps_pool = cps_pool.sort_values("Retrieval_Rank").head(3)
+    max_score = float(pd.to_numeric(baseline.get("RAG_Score"), errors="coerce").max()) if not baseline.empty else 100.0
+    cps_pool["RAG_Score"] = [max_score + 4 - rank for rank in range(1, len(cps_pool) + 1)]
+    non_cps = baseline.loc[baseline["Source_Type"] != "CPS PDF"].copy()
+    combined = pd.concat([cps_pool, non_cps], ignore_index=True, sort=False).head(top_k).copy()
+    combined["Citation_ID"] = [f"E{i + 1:02d}" for i in range(len(combined))]
+    semantic = combined.apply(lambda evidence: semantic_evidence_classification(evidence, sector, keywords), axis=1)
+    combined["relevance_type"] = semantic.map(lambda result: result[0])
+    combined["proposal_used"] = semantic.map(lambda result: result[2])
+    combined["Directness"] = combined["relevance_type"]
+    combined["Is_Direct_Evidence"] = semantic.map(lambda result: result[1])
+    combined["Proposal_Use"] = combined["proposal_used"]
+    combined["evidence_role"] = combined.get("Model_Role", pd.Series(index=combined.index, dtype=str)).fillna("보조 근거")
+    combined["Sector_Relevance"] = combined.apply(
+        lambda evidence: wdi_relevance_level(sector, safe_text(evidence.get("Title")), safe_text(evidence.get("Content")))
+        if evidence.get("Source_Type") == "WDI"
+        else ("직접 관련" if bool(evidence.get("Is_Direct_Evidence")) else safe_text(evidence.get("Directness"))),
+        axis=1,
+    )
+    combined["Retrieval_Mode"] = safe_text(status.get("effective_mode"))
+    combined["Retrieval_Rank"] = combined.get("Retrieval_Rank", pd.Series(index=combined.index, dtype=float)).fillna(
+        pd.Series(range(4, 4 + len(combined)), index=combined.index)
+    )
+    return combined, status
 
 
 def citation_ids(docs: pd.DataFrame, source_type: str | None = None, limit: int = 3) -> str:
@@ -3743,6 +3854,13 @@ def render_builder(data):
         scales = ["소규모 파일럿", "중형 확장사업", "민관협력형", "정책연구/예비타당성"]
         scale = st.selectbox("사업 규모", scales, index=scales.index(sc_scale) if sc_scale in scales else 0)
         keywords = st.text_input("핵심 키워드", value=sc_keywords)
+        retrieval_mode = st.selectbox(
+            "CPS 검색 방식",
+            list(RETRIEVAL_MODE_LABELS),
+            format_func=lambda value: RETRIEVAL_MODE_LABELS[value],
+            index=list(RETRIEVAL_MODE_LABELS).index(RETRIEVAL_DEFAULT_MODE),
+            help="내부 Gold Set test에서 lexical이 가장 정확하고 빨라 운영 기본값으로 유지됩니다. 선택형 방식은 로컬 임베딩 환경에서만 활성화됩니다.",
+        )
         mode = st.radio("생성 모드", ["로컬 RAG", "LLM RAG (선택)"], horizontal=True)
         with st.expander("AI 생성 예비 설계 가정 조정"):
             st.caption("공공데이터 관측값이 아닌 잠정 설계값입니다. 현지조사·예산·수행기관 협의를 거쳐 수정해야 합니다.")
@@ -3783,20 +3901,31 @@ def render_builder(data):
     )
 
     with c2:
-        docs_preview = retrieve_rag_evidence(corpus, country, sector, keywords, row, top_k=10)
+        docs_preview, preview_retrieval_status = retrieve_rag_evidence_with_mode(
+            corpus, country, sector, keywords, row, retrieval_mode, top_k=10
+        )
         c21, c22, c23 = st.columns(3)
         with c21: metric_card("우선순위 점수", fmt_number(row.get("K_ODA_Opportunity_Score_V21")), f"기본 순위 #{fmt_int(row.get('Rank_V21'))}")
         with c22: metric_card("후보유형", compact_candidate_label(row.get("Candidate_Type_V21")), feasibility_label(row.get("Risk_Feasibility_Score_V21"), master["Risk_Feasibility_Score_V21"]))
         with c23: metric_card("검색 근거", fmt_int(len(docs_preview)), "RAG Top-K")
         st.markdown(f"**정책·리스크 보조지표:** 정책정합성 {fmt_number(row.get('Policy_Alignment_Score_V21'))}, 실행가능성 {fmt_number(row.get('Risk_Feasibility_Score_V21'))}")
         st.markdown("**RAG 근거 미리보기:**")
+        effective_retrieval = safe_text(preview_retrieval_status.get("effective_mode")) or "lexical"
+        st.caption(
+            f"검색 방식: 요청 {retrieval_mode} · 적용 {effective_retrieval} · "
+            f"벤치마크 {RETRIEVAL_BENCHMARK_VERSION}"
+        )
+        if preview_retrieval_status.get("fallback"):
+            st.warning(f"선택형 검색을 사용할 수 없어 lexical로 전환했습니다. {safe_text(preview_retrieval_status.get('fallback_reason'))}")
         for _, d in docs_preview.head(5).iterrows():
             st.markdown(f"- **{d['Source_Type']}** · {d['Title']}")
 
     if clicked:
         st.divider()
         row = get_country_row(master, country)
-        rag_docs = retrieve_rag_evidence(corpus, country, sector, keywords, row, top_k=16)
+        rag_docs, retrieval_status = retrieve_rag_evidence_with_mode(
+            corpus, country, sector, keywords, row, retrieval_mode, top_k=16
+        )
         builder_result = build_builder_result(country, sector, rag_docs, design_assumptions)
         proposal_docs = result_evidence_frame(builder_result, rag_docs)
         proposal_docs = proposal_docs.loc[
@@ -3819,7 +3948,11 @@ def render_builder(data):
 
         generation_mode = "OpenAI LLM + RAG" if llm_used else "Local RAG"
         builder_result["generation_mode"] = generation_mode
-        generation_metadata = f"\n\n## 생성 메타데이터\n- 생성모드: {generation_mode}\n- 모델 버전: {MODEL_VERSION}\n- 근거 범위: {country} · {sector}\n"
+        generation_metadata = (
+            f"\n\n## 생성 메타데이터\n- 생성모드: {generation_mode}\n- 모델 버전: {MODEL_VERSION}\n"
+            f"- 검색모드: 요청 {retrieval_mode} · 적용 {safe_text(retrieval_status.get('effective_mode')) or 'lexical'}\n"
+            f"- 근거 범위: {country} · {sector}\n"
+        )
         proposal = normalize_generated_proposal_language(proposal, builder_result) + generation_metadata
         evidence_pack = normalize_evidence_citation_prefix(build_rag_evidence_pack(
             country, sector, keywords, rag_docs, design_assumptions, builder_result

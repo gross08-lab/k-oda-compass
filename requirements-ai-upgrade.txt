@@ -1,0 +1,4 @@
+# Optional local benchmark environment. The Streamlit app keeps lexical fallback
+# when this package or the local model cache is unavailable.
+fastembed==0.8.0
+numpy>=2.3.0,<3.0

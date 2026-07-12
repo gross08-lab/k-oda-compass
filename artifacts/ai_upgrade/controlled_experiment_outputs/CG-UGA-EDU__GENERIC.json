@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-UGA-EDU",
+  "condition": "GENERIC",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.262089+00:00",
+  "prompt_sha256": "5fc93e72936a7436565be1fbf5a76c59af3e855dc9047f2d8f772210699c5559",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}

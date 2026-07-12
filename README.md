@@ -16,6 +16,7 @@
 - 실제 LLM 연동: `OPENAI_API_KEY`가 있으면 OpenAI Responses API로 근거팩 기반 문장을 고도화합니다.
 - 데모 안정성: API 키가 없어도 로컬 RAG 생성기로 동일한 Evidence Pack 기반 결과를 생성합니다.
 - 설명 가능한 추천: 국가별 점수 기여도, 정책·리스크 proxy, 민감도 분석을 앱 안에서 검증합니다.
+- 검증된 검색 선택: lexical, embedding, hybrid, 국가·분야 필터 hybrid를 같은 내부 Gold Set에서 비교하며, 동결 test 결과가 가장 안정적인 lexical을 운영 기본값으로 유지합니다.
 - 제출 완성도: 사업기획서 Markdown, 1-page policy brief, Evidence Pack, PDF export, QR 배포 패널을 제공합니다.
 - 심사모드: 평가축 대응표, 90초 발표 흐름, 경쟁작 대비 포지션, 제출 체크리스트를 앱 안에서 바로 보여줍니다.
 
@@ -34,6 +35,29 @@
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## 검색 벤치마크
+
+내부 Gold Set은 CPS 원문 10페이지를 직접 대조한 뒤 만든 60개 질의 형식입니다. 이는 60개의 독립 페이지 검수를 의미하지 않습니다. 고정된 dev/test 분할은 21/39이며, test Recall@5는 lexical 1.00, embedding 0.52, hybrid 0.80, 국가·분야 필터 hybrid 0.96이었습니다. lexical 평균 검색시간은 1.50ms로 가장 짧아 운영 기본값으로 유지합니다.
+
+선택형 임베딩 실험 환경은 Streamlit 배포 의존성과 분리되어 있습니다.
+
+```bash
+python3 -m venv .venv-ai-upgrade
+.venv-ai-upgrade/bin/pip install -r requirements-ai-upgrade.txt
+PYTHONPATH=. .venv-ai-upgrade/bin/python scripts/build_embedding_index.py
+PYTHONPATH=. HF_HUB_OFFLINE=1 .venv-ai-upgrade/bin/python scripts/run_retrieval_benchmark.py
+```
+
+모델 또는 인덱스를 사용할 수 없으면 앱은 이유를 표시하고 lexical 검색으로 전환합니다. 임베딩 모델 파일과 cache는 Git에 포함하지 않습니다.
+
+## 점수 계보
+
+저장된 7개 구성점수 이후의 Opportunity Score 가중합은 50/50개국, 최대 절대오차 0.005로 재현됩니다. 원자료에서 7개 구성점수를 생성한 상류 코드와 전체 정규화 규칙은 저장소 이력에서 발견되지 않아 전체 상류 재현을 주장하지 않습니다. 세부 상태는 `artifacts/ai_upgrade/score_lineage_report.md`와 `score_lineage_matrix.csv`에 기록했습니다.
+
+## 동일모델 A/B/C
+
+10개 국가·분야 사례의 `GENERIC`, `RAW_EVIDENCE`, `KODA_CONTROLLED` 하네스와 결정론적 평가기는 구현되어 있습니다. 이번 실행환경에는 `OPENAI_API_KEY`가 없어 실제 생성 호출은 0건이며, A/B/C 성능·비용·지연 개선값은 산출하거나 주장하지 않습니다.
 
 ## LLM 모드
 
@@ -91,22 +115,22 @@ OPENAI_MODEL = "gpt-5.2"
 
 ## CPS PDF 재생성
 
-PDF 원본이 `/Users/kimjaeyoung/Downloads/CPS(kor)`에 있을 때:
+PDF 원본 디렉터리를 별도로 확보한 환경에서:
 
 ```bash
-python3 scripts/ingest_cps_pdfs.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ingest_cps_pdfs.py --input "/path/to/CPS(kor)" --output KODA_cps_pdf_chunks.csv
 ```
 
 OCR 커버리지를 갱신하려면:
 
 ```bash
-python3 scripts/cps_ocr_coverage.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)"
+python3 scripts/cps_ocr_coverage.py --input "/path/to/CPS(kor)"
 ```
 
 Tesseract Korean OCR이 설치된 환경에서 이미지형 PDF까지 재추출하려면:
 
 ```bash
-python3 scripts/ocr_cps_pdfs.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ocr_cps_pdfs.py --input "/path/to/CPS(kor)" --output KODA_cps_pdf_chunks.csv
 ```
 
 샘플 산출물을 재생성하려면:

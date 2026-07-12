@@ -1,0 +1,23 @@
+{
+  "status": "NOT_EXECUTED_NO_API_KEY",
+  "cases": 10,
+  "conditions": [
+    "GENERIC",
+    "RAW_EVIDENCE",
+    "KODA_CONTROLLED"
+  ],
+  "planned_calls": 30,
+  "executed_calls": 0,
+  "failed_calls": 0,
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "claim_allowed": false,
+  "note": "No generation or metric values are fabricated when API access is absent."
+}

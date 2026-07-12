@@ -1,0 +1,18 @@
+{
+  "case_id": "CG-BGD-ENERGY",
+  "condition": "GENERIC",
+  "parameters": {
+    "model": "gpt-5.2",
+    "temperature": null,
+    "seed": null,
+    "max_output_tokens": 1600,
+    "timeout_seconds": 30,
+    "repeats": 1,
+    "prompt_version": "controlled-generation-v1"
+  },
+  "executed_at_utc": "2026-07-12T22:57:41.260008+00:00",
+  "prompt_sha256": "d45ea6896677b0d68553a25ff39de5fecd0c89ffa4f4cd2d16e15297a2fc5e39",
+  "evidence_ids": [],
+  "execution_status": "NOT_EXECUTED_NO_API_KEY",
+  "output_text": ""
+}
