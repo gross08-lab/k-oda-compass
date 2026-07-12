@@ -88,13 +88,46 @@ def test_repository_korean_fonts_and_license_exist() -> None:
 
 def test_direct_evidence_matches_selected_country_and_sector(builder_artifacts: dict) -> None:
     docs = builder_artifacts["docs"]
-    direct = docs.loc[docs["Directness"] == "직접근거"]
+    direct = docs.loc[docs["Is_Direct_Evidence"]]
 
     assert not direct.empty
     assert direct["Country_KR"].eq(builder_artifacts["country"]).all()
     assert direct["Sector_Group"].eq(builder_artifacts["sector"]).all()
     assert not ((direct["Source_Type"] == "CPS PDF") & (direct["Sector_Group"] != "공공행정")).any()
     assert not ((direct["Source_Type"] == "Sector Portfolio") & (direct["Sector_Group"] != "공공행정")).any()
+
+
+def test_public_admin_semantic_relevance_overrides_csv_sector_label(builder_artifacts: dict) -> None:
+    docs = builder_artifacts["docs"].set_index("Citation_ID")
+
+    assert docs.loc["E01", "Directness"] == "간접 관련 협력경험"
+    assert docs.loc["E02", "Directness"] == "간접 관련 협력경험"
+    assert docs.loc["E03", "Directness"] == "직접 유사사업"
+    assert bool(docs.loc["E03", "Is_Direct_Evidence"])
+    assert docs.loc["E04", "Directness"] == "분야 불일치 · 직접근거 제외"
+    assert not bool(docs.loc["E04", "Proposal_Use"])
+    assert docs.loc["E05", "Directness"] == "CPS 국가배경 참고근거"
+    assert docs.loc["E09", "Directness"] == "공공행정 정책방향 직접근거"
+    assert bool(docs.loc["E09", "Is_Direct_Evidence"])
+    assert docs.loc["E10", "Directness"] == "분야 의미 관련성 낮음 · Proposal 제외"
+    assert not bool(docs.loc["E10", "Proposal_Use"])
+
+    koica_direct = docs.loc[(docs["Source_Type"] == "KOICA Project") & docs["Is_Direct_Evidence"]]
+    cps_direct = docs.loc[(docs["Source_Type"] == "CPS PDF") & docs["Is_Direct_Evidence"]]
+    assert koica_direct.index.tolist() == ["E03"]
+    assert cps_direct.index.tolist() == ["E09"]
+
+
+def test_proposal_uses_only_semantically_relevant_direct_evidence(builder_artifacts: dict) -> None:
+    proposal = builder_artifacts["proposal"]
+
+    assert "[E03] **직접 유사사업**" in proposal
+    assert "[E01] **간접 관련 협력경험**" in proposal
+    assert "[E02] **간접 관련 협력경험**" in proposal
+    assert "[E05] **CPS 국가배경 참고근거**" in proposal
+    assert "[E09] **공공행정 정책방향 직접근거**" in proposal
+    assert "[E04]" not in proposal
+    assert "[E10]" not in proposal
 
 
 def test_koica_repeated_project_rows_are_consolidated(builder_artifacts: dict) -> None:
@@ -213,3 +246,17 @@ def test_citation_semantics_rejects_non_cps_id_for_cps_claim(builder_artifacts: 
     assert len(mismatches) == 1
     assert mismatches[0]["claim_type"] == "CPS 정책 주장"
     assert mismatches[0]["citation_ids"] == non_cps_id
+
+
+def test_citation_prefix_and_requested_language_are_normalized() -> None:
+    source = (
+        "KOICA는 관련 정책방향을 제시하며 본 사업을 지원하고자 합니다 [5]. "
+        "실행가능성은 시사로 평가됩니다 [E12]."
+    )
+    normalized = app.normalize_generated_proposal_language(source)
+
+    assert "[E05]" in normalized
+    assert "[E12]" in normalized
+    assert "[5]" not in normalized
+    assert "CPS는 관련 정책방향을 제시하며 본 사업은 정합성을 예비 검토합니다" in normalized
+    assert "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다" in normalized

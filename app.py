@@ -619,6 +619,45 @@ def build_validation_country_corpus(country: str) -> pd.DataFrame:
     )
 
 
+def semantic_evidence_classification(evidence: pd.Series, sector: str, keywords: str) -> tuple[str, bool, bool]:
+    source_type = safe_text(evidence.get("Source_Type"))
+    sector_match = safe_text(evidence.get("Sector_Group")) == sector
+    if sector != "공공행정":
+        is_direct = source_type in {"CPS PDF", "KOICA Project", "Sector Portfolio"} and sector_match
+        return ("직접근거" if is_direct else "보조근거", is_direct, True)
+
+    original_title = safe_text(evidence.get("Original_Title")) or safe_text(evidence.get("Title"))
+    content = safe_text(evidence.get("Content"))
+    semantic_text = f"{original_title} {content}".lower()
+
+    if source_type == "KOICA Project":
+        unrelated_terms = ("agricultural", "agriculture", "food security", "농업", "농민", "작물재배")
+        direct_terms = (
+            "digital records", "records management", "digital government", "e-government",
+            "디지털기록", "기록관리", "전자정부", "디지털 정부", "행정정보",
+        )
+        if any(term in semantic_text for term in unrelated_terms):
+            return "분야 불일치 · 직접근거 제외", False, False
+        if any(term in semantic_text for term in direct_terms):
+            return "직접 유사사업", True, True
+        return "간접 관련 협력경험", False, True
+
+    if source_type == "CPS PDF":
+        direct_terms = (
+            "원조관리 플랫폼", "aid management platform", "재무기획부", "정부채무관리법",
+            "정부 세입", "정부 지출", "국가부채관리", "기관별 역할 및 책임",
+        )
+        if any(term in semantic_text for term in direct_terms):
+            return "공공행정 정책방향 직접근거", True, True
+        if "주요국 공여 활동" in semantic_text or "국제사회의 지원 총액" in semantic_text:
+            return "CPS 국가배경 참고근거", False, True
+        return "분야 의미 관련성 낮음 · Proposal 제외", False, False
+
+    if source_type == "Sector Portfolio" and sector_match:
+        return "분야 일치 파생근거", False, True
+    return "보조근거", False, True
+
+
 def retrieve_rag_evidence(corpus: pd.DataFrame, country: str, sector: str, keywords: str, row: pd.Series, top_k: int = 14) -> pd.DataFrame:
     query_tokens = tokenize_for_rag(
         country,
@@ -690,16 +729,14 @@ def retrieve_rag_evidence(corpus: pd.DataFrame, country: str, sector: str, keywo
     out = scoped.loc[selected_indices].copy()
     out = out.sort_values("RAG_Score", ascending=False).reset_index(drop=True)
     out["Citation_ID"] = [f"E{i + 1:02d}" for i in range(len(out))]
-    out["Directness"] = out.apply(
-        lambda evidence: "직접근거"
-        if evidence.get("Source_Type") in sector_bound_sources and evidence.get("Sector_Group") == sector
-        else "보조근거",
-        axis=1,
-    )
+    semantic = out.apply(lambda evidence: semantic_evidence_classification(evidence, sector, keywords), axis=1)
+    out["Directness"] = semantic.map(lambda result: result[0])
+    out["Is_Direct_Evidence"] = semantic.map(lambda result: result[1])
+    out["Proposal_Use"] = semantic.map(lambda result: result[2])
     out["Sector_Relevance"] = out.apply(
         lambda evidence: wdi_relevance_level(sector, safe_text(evidence.get("Title")), safe_text(evidence.get("Content")))
         if evidence.get("Source_Type") == "WDI"
-        else ("직접 관련" if evidence.get("Directness") == "직접근거" else "국가 공통 보조"),
+        else ("직접 관련" if bool(evidence.get("Is_Direct_Evidence")) else safe_text(evidence.get("Directness"))),
         axis=1,
     )
     return out
@@ -711,6 +748,32 @@ def citation_ids(docs: pd.DataFrame, source_type: str | None = None, limit: int 
     subset = docs if source_type is None else docs.loc[docs["Source_Type"] == source_type]
     ids = subset["Citation_ID"].head(limit).tolist()
     return ", ".join(f"[{x}]" for x in ids)
+
+
+def normalize_evidence_citation_prefix(text: str) -> str:
+    return re.sub(
+        r"\[(?:E)?(\d{1,2})\]",
+        lambda match: f"[E{int(match.group(1)):02d}]",
+        text or "",
+        flags=re.IGNORECASE,
+    )
+
+
+def normalize_generated_proposal_language(text: str) -> str:
+    replacements = {
+        "KOICA는 관련 정책방향을 제시하며 본 사업을 지원하고자 합니다":
+            "CPS는 관련 정책방향을 제시하며 본 사업은 정합성을 예비 검토합니다",
+        "KOICA는 관련 정책방향을 제시하며 본 사업을 지원하고자 합니다.":
+            "CPS는 관련 정책방향을 제시하며 본 사업은 정합성을 예비 검토합니다.",
+        "실행가능성은 시사로 평가됩니다":
+            "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다",
+        "실행가능성은 시사로 평가됩니다.":
+            "공개지표는 일정 수준의 실행 가능성을 시사하지만 추가 검증이 필요합니다.",
+    }
+    normalized = text or ""
+    for source, replacement in replacements.items():
+        normalized = normalized.replace(source, replacement)
+    return normalize_evidence_citation_prefix(normalized)
 
 
 def format_rag_citations(docs: pd.DataFrame) -> str:
@@ -2007,25 +2070,48 @@ def build_rag_markdown_proposal(
     assumptions = normalize_design_assumptions(design_assumptions)
     score_cites = citation_ids(docs, "Score Model", 1)
     policy_cites = citation_ids(docs, "Policy/Risk", 1)
-    cps_cites = citation_ids(docs, "CPS PDF", 2)
     wdi_cites = citation_ids(docs, "WDI", 3)
-    project_cites = citation_ids(docs, "KOICA Project", 4)
     portfolio_cites = citation_ids(docs, "Sector Portfolio", 1)
     contribution = score_contribution_table(row, weights)
     top_contrib = contribution.head(3)
-    cps_docs = docs.loc[(docs["Source_Type"] == "CPS PDF") & (docs["Directness"] == "직접근거")].head(2)
-    koica_docs = docs.loc[(docs["Source_Type"] == "KOICA Project") & (docs["Directness"] == "직접근거")].head(4)
+    direct_mask = docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+    proposal_mask = docs.get("Proposal_Use", pd.Series(True, index=docs.index)).fillna(False).astype(bool)
+    cps_docs = docs.loc[(docs["Source_Type"] == "CPS PDF") & direct_mask & proposal_mask].head(2)
+    cps_background_docs = docs.loc[
+        (docs["Source_Type"] == "CPS PDF")
+        & docs["Directness"].eq("CPS 국가배경 참고근거")
+        & proposal_mask
+    ].head(1)
+    koica_docs = docs.loc[(docs["Source_Type"] == "KOICA Project") & direct_mask & proposal_mask].head(4)
+    koica_indirect_docs = docs.loc[
+        (docs["Source_Type"] == "KOICA Project")
+        & docs["Directness"].eq("간접 관련 협력경험")
+        & proposal_mask
+    ].head(2)
     wdi_docs = docs.loc[docs["Source_Type"] == "WDI"].head(3)
+    cps_cites = citation_ids(cps_docs, limit=2)
+    cps_background_cites = citation_ids(cps_background_docs, limit=1)
+    project_cites = citation_ids(koica_docs, limit=4)
+    indirect_project_cites = citation_ids(koica_indirect_docs, limit=2)
 
     cps_lines = [
-        f"- [{d['Citation_ID']}] **{d['Title']}**: {concise_source_summary(d['Content'], 260)}"
+        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 260)}"
         for _, d in cps_docs.iterrows()
     ] or ["- 선택 국가·분야와 직접 일치하는 CPS 청크가 없어 최신 CPS 원문에서 추가 확인이 필요합니다."]
+    cps_background_lines = [
+        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Title']}**: {concise_source_summary(d['Content'], 180)}"
+        for _, d in cps_background_docs.iterrows()
+    ]
     koica_lines = [
-        f"- [{d['Citation_ID']}] **{d['Original_Title']}** · 사업기간 {d['Project_Period']} · "
+        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Original_Title']}** · 사업기간 {d['Project_Period']} · "
         f"관측 연도 {d['Observed_Years']} · 원자료 {fmt_int(d['Record_Count'])}건 · {d['Duplicate_Status']}"
         for _, d in koica_docs.iterrows()
     ] or ["- 선택 국가·분야의 직접 KOICA 사업근거가 제한적이므로 현지 수요조사와 원자료 재확인이 필요합니다."]
+    koica_indirect_lines = [
+        f"- [{d['Citation_ID']}] **{d['Directness']}** · **{d['Original_Title']}** · "
+        f"관측 연도 {d['Observed_Years']} · 직접 유사사업이 아닌 협력경험 참고"
+        for _, d in koica_indirect_docs.iterrows()
+    ]
     wdi_lines = [
         f"- [{d['Citation_ID']}] **{d['Original_Title']}** ({d['Indicator_Code']}): {d['Indicator_Value']} · "
         f"최신연도 {d['Reference_Year']} · {d['Sector_Relevance']} · {d['Direction_Label']}"
@@ -2036,10 +2122,13 @@ def build_rag_markdown_proposal(
         for _, r in top_contrib.iterrows()
     ]
     used_ids = []
-    for cite_group in (score_cites, policy_cites, cps_cites, project_cites, portfolio_cites, wdi_cites):
+    for cite_group in (
+        score_cites, policy_cites, cps_cites, cps_background_cites,
+        project_cites, indirect_project_cites, portfolio_cites, wdi_cites,
+    ):
         used_ids.extend(re.findall(r"E\d{2}", cite_group))
-    citation_summary = ", ".join(dict.fromkeys(used_ids)) or "직접 Citation 없음"
-    class_summary = evidence_class_summary_table(docs)
+    citation_summary = ", ".join(f"[{citation_id}]" for citation_id in dict.fromkeys(used_ids)) or "직접 Citation 없음"
+    class_summary = evidence_class_summary_table(docs.loc[proposal_mask])
     assumption_notice = safe_text(result.get("assumption_notice")) or ASSUMPTION_NOTICE
     assumption_lines = result_assumption_lines(result)
     wdi_role = safe_text(result.get("wdi_role"))
@@ -2053,7 +2142,7 @@ def build_rag_markdown_proposal(
 - {country}의 v2.1 국가 우선검토 점수는 **{fmt_number(row.get('K_ODA_Opportunity_Score_V21'))}/100**이며 후보유형은 **{compact_candidate_label(row.get('Candidate_Type_V21'))}**입니다 {score_cites}.
 - 개발수요와 정책정합성은 높지만 실행가능성 보완이 필요한 예비 검토 대상입니다. 사업화 전 현지 파트너 역량, 제도환경, 집행위험과 참여 의향을 추가 검증해야 합니다 {policy_cites}.
 - {sector} 분야의 직접 정책방향은 선택 분야와 일치하는 CPS 정책원문에서 확인합니다 {cps_cites}.
-- 기존 KOICA 사업은 한국의 해당 분야 협력경험을 보여줍니다 {project_cites}. 대상국의 현재 사업수요는 CPS 정책방향과 현지 수요조사를 통해 별도로 검증해야 합니다.
+- E03 디지털 기록관리 사업은 직접 유사사업이며, E01·E02는 간접 관련 협력경험으로만 참고합니다 {project_cites} {indirect_project_cites}. 대상국의 현재 사업수요는 CPS 정책방향과 현지 수요조사를 통해 별도로 검증해야 합니다.
 
 ## Evidence Class 요약
 {class_summary}
@@ -2065,8 +2154,14 @@ def build_rag_markdown_proposal(
 ## 4. Source Evidence · CPS 정책원문
 {chr(10).join(cps_lines)}
 
+### CPS 국가배경 참고근거
+{chr(10).join(cps_background_lines) if cps_background_lines else '- 별도 국가배경 참고근거 없음'}
+
 ## 5. Source Evidence · KOICA 기존 협력경험
 {chr(10).join(koica_lines)}
+
+### 간접 관련 협력경험
+{chr(10).join(koica_indirect_lines) if koica_indirect_lines else '- 간접 관련 협력경험 없음'}
 
 기존 KOICA 사업은 한국의 해당 분야 협력경험과 유사사업 경험을 보여주지만, 현재 개발수요를 직접 입증하지 않습니다. 현재 사업수요는 CPS 정책방향과 현지 수요조사를 통해 별도로 검증해야 합니다.
 
@@ -2129,7 +2224,9 @@ def build_policy_brief(
     result = result or build_builder_result(country, sector, docs, design_assumptions)
     docs = result_evidence_frame(result, docs)
     assumptions = normalize_design_assumptions(design_assumptions)
-    direct_docs = docs.loc[docs.get("Directness", pd.Series(index=docs.index, dtype=str)) == "직접근거"].head(4)
+    direct_docs = docs.loc[
+        docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+    ].head(4)
     class_summary = evidence_class_summary_table(docs.head(8))
     assumption_notice = safe_text(result.get("assumption_notice")) or ASSUMPTION_NOTICE
     return f"""# 1-Page Policy Brief: {country} {sector}
@@ -2218,35 +2315,45 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
 
     buffer = io.BytesIO()
     page_width, _ = A4
-    margin = 42
+    margin = 34
     usable_width = page_width - margin * 2
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         leftMargin=margin,
         rightMargin=margin,
-        topMargin=48,
-        bottomMargin=48,
+        topMargin=30,
+        bottomMargin=30,
         title=title,
         author="K-ODA Compass",
         subject="근거 기반 AI ODA 사업제안서",
     )
     styles = {
-        "title": ParagraphStyle("KoreanTitle", fontName=bold_font, fontSize=17, leading=23, spaceAfter=16, alignment=TA_CENTER, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
-        "h1": ParagraphStyle("KoreanH1", fontName=bold_font, fontSize=15, leading=21, spaceBefore=12, spaceAfter=8, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
-        "h2": ParagraphStyle("KoreanH2", fontName=bold_font, fontSize=12, leading=18, spaceBefore=10, spaceAfter=6, wordWrap="CJK", textColor=colors.HexColor("#315D86")),
-        "h3": ParagraphStyle("KoreanH3", fontName=bold_font, fontSize=10.5, leading=16, spaceBefore=8, spaceAfter=4, wordWrap="CJK"),
-        "body": ParagraphStyle("KoreanBody", fontName=regular_font, fontSize=9.2, leading=14.2, spaceAfter=5, wordWrap="CJK"),
-        "bullet": ParagraphStyle("KoreanBullet", fontName=regular_font, fontSize=9.2, leading=14.2, leftIndent=12, firstLineIndent=-8, spaceAfter=3, wordWrap="CJK"),
-        "quote": ParagraphStyle("KoreanQuote", fontName=regular_font, fontSize=8.8, leading=13.5, leftIndent=10, rightIndent=10, borderColor=colors.HexColor("#B8C7D6"), borderWidth=0.7, borderPadding=7, backColor=colors.HexColor("#F4F7FA"), wordWrap="CJK"),
-        "table_header": ParagraphStyle("KoreanTableHeader", fontName=bold_font, fontSize=8.2, leading=11.5, wordWrap="CJK", textColor=colors.white),
-        "table_body": ParagraphStyle("KoreanTableBody", fontName=regular_font, fontSize=7.8, leading=11.2, wordWrap="CJK"),
+        "title": ParagraphStyle("KoreanTitle", fontName=bold_font, fontSize=14.5, leading=18, spaceAfter=8, alignment=TA_CENTER, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
+        "h1": ParagraphStyle("KoreanH1", fontName=bold_font, fontSize=12.5, leading=16, spaceBefore=7, spaceAfter=4, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
+        "h2": ParagraphStyle("KoreanH2", fontName=bold_font, fontSize=10.2, leading=13, spaceBefore=5, spaceAfter=3, wordWrap="CJK", textColor=colors.HexColor("#315D86")),
+        "h3": ParagraphStyle("KoreanH3", fontName=bold_font, fontSize=9.2, leading=12, spaceBefore=4, spaceAfter=2, wordWrap="CJK"),
+        "body": ParagraphStyle("KoreanBody", fontName=regular_font, fontSize=8, leading=10.8, spaceAfter=2, wordWrap="CJK"),
+        "bullet": ParagraphStyle("KoreanBullet", fontName=regular_font, fontSize=8, leading=10.8, leftIndent=10, firstLineIndent=-7, spaceAfter=1.5, wordWrap="CJK"),
+        "quote": ParagraphStyle("KoreanQuote", fontName=regular_font, fontSize=7.8, leading=10.5, leftIndent=7, rightIndent=7, borderColor=colors.HexColor("#B8C7D6"), borderWidth=0.7, borderPadding=4, backColor=colors.HexColor("#F4F7FA"), wordWrap="CJK"),
+        "table_header": ParagraphStyle("KoreanTableHeader", fontName=bold_font, fontSize=7.2, leading=9, wordWrap="CJK", textColor=colors.white),
+        "table_body": ParagraphStyle("KoreanTableBody", fontName=regular_font, fontSize=6.8, leading=8.5, wordWrap="CJK"),
         "footer": ParagraphStyle("KoreanFooter", fontName=regular_font, fontSize=7.5, leading=9, alignment=TA_RIGHT, textColor=colors.HexColor("#667788")),
     }
 
     def plain_markdown(value: str) -> str:
+        citations: list[str] = []
+
+        def protect_citation(match: re.Match) -> str:
+            citations.append(normalize_evidence_citation_prefix(match.group(0)))
+            return f"KODACITATION{len(citations) - 1}TOKEN"
+
+        value = re.sub(r"\[(?:E)?\d{1,2}\]", protect_citation, value, flags=re.IGNORECASE)
         value = value.replace("**", "").replace("`", "")
-        return escape(value.strip())
+        escaped = escape(value.strip())
+        for index, citation in enumerate(citations):
+            escaped = escaped.replace(f"KODACITATION{index}TOKEN", citation)
+        return escaped
 
     story = [Paragraph(plain_markdown(title), styles["title"])]
     lines = markdown_text.splitlines()
@@ -2255,7 +2362,7 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
         raw = lines[index].rstrip()
         line = raw.strip()
         if not line:
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 1))
             index += 1
             continue
         if line == "---":
@@ -2283,12 +2390,12 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#C8D3DE")),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F9FB")]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
             ]))
-            story.extend([table, Spacer(1, 8)])
+            story.extend([table, Spacer(1, 3)])
             continue
         heading = re.match(r"^(#{1,3})\s+(.*)$", line)
         if heading:
@@ -2309,7 +2416,7 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
         canvas.saveState()
         canvas.setFont(regular_font, 7.5)
         canvas.setFillColor(colors.HexColor("#667788"))
-        canvas.drawRightString(A4[0] - margin, 24, f"K-ODA Compass · {document.page}페이지")
+        canvas.drawRightString(A4[0] - margin, 18, f"K-ODA Compass · {document.page}페이지")
         canvas.restoreState()
 
     class KoreanCanvas(Canvas):
@@ -2334,7 +2441,8 @@ def builder_output_quality_report(
 ) -> tuple[str, pd.DataFrame]:
     result = result or build_builder_result(country, sector, docs)
     docs = result_evidence_frame(result, docs)
-    direct = docs.loc[docs.get("Directness", pd.Series(index=docs.index, dtype=str)) == "직접근거"]
+    direct_mask = docs.get("Is_Direct_Evidence", pd.Series(False, index=docs.index)).fillna(False).astype(bool)
+    direct = docs.loc[direct_mask]
     evidence_ids = set(docs.get("Citation_ID", pd.Series(dtype=str)).dropna().astype(str))
     cited_ids = set(re.findall(r"\[(E\d{2})\]", proposal + "\n" + brief))
     unknown_ids = sorted(cited_ids - evidence_ids)
@@ -2342,6 +2450,15 @@ def builder_output_quality_report(
     sector_mismatch = int((direct.get("Sector_Group", pd.Series(index=direct.index, dtype=str)) != sector).sum())
     cross_cps = int(((direct.get("Source_Type", pd.Series(index=direct.index, dtype=str)) == "CPS PDF") & (direct.get("Sector_Group", pd.Series(index=direct.index, dtype=str)) != sector)).sum())
     cross_portfolio = int(((direct.get("Source_Type", pd.Series(index=direct.index, dtype=str)) == "Sector Portfolio") & (direct.get("Sector_Group", pd.Series(index=direct.index, dtype=str)) != sector)).sum())
+    excluded_ids = set(
+        docs.loc[
+            ~docs.get("Proposal_Use", pd.Series(True, index=docs.index)).fillna(False).astype(bool),
+            "Citation_ID",
+        ].dropna().astype(str)
+    )
+    excluded_citations = sorted(cited_ids & excluded_ids)
+    valid_direct_labels = {"직접근거", "직접 유사사업", "공공행정 정책방향 직접근거"}
+    semantic_direct_mismatch = int((~direct.get("Directness", pd.Series(index=direct.index, dtype=str)).isin(valid_direct_labels)).sum()) if not direct.empty else 0
     duplicate_groups = int(pd.to_numeric(docs.loc[docs.get("Source_Type") == "KOICA Project", "Record_Count"], errors="coerce").fillna(1).gt(1).sum()) if "Record_Count" in docs else 0
     combined = "\n".join([proposal, brief, evidence_pack])
     internal_names = re.findall(r"lower_is_higher_need|higher_is_higher_need|\bproxy\b", combined, flags=re.IGNORECASE)
@@ -2381,7 +2498,7 @@ def builder_output_quality_report(
         and assumption_classes_ok
     )
     wdi_rows = docs.loc[docs.get("Source_Type", pd.Series(index=docs.index, dtype=str)) == "WDI"]
-    wdi_direct = int(((docs.get("Source_Type", pd.Series(index=docs.index, dtype=str)) == "WDI") & (docs.get("Directness", pd.Series(index=docs.index, dtype=str)) == "직접근거")).sum())
+    wdi_direct = int(((docs.get("Source_Type", pd.Series(index=docs.index, dtype=str)) == "WDI") & direct_mask).sum())
     wdi_class_ok = wdi_rows.empty or wdi_rows.get("Evidence_Class", pd.Series(index=wdi_rows.index, dtype=str)).eq("Supplementary Source").all()
     wdi_role = safe_text(result.get("wdi_role"))
     wdi_role_ok = wdi_class_ok and wdi_direct == 0 and all(
@@ -2412,6 +2529,8 @@ def builder_output_quality_report(
         ["Citation ID 무결성", "미존재 0건", f"{len(unknown_ids)}건" + (f" · {', '.join(unknown_ids)}" if unknown_ids else ""), "BLOCK" if unknown_ids else "PASS"],
         ["다른 분야 CPS 직접근거", "0건", f"{cross_cps}건", "BLOCK" if cross_cps else "PASS"],
         ["다른 분야 포트폴리오 직접근거", "0건", f"{cross_portfolio}건", "BLOCK" if cross_portfolio else "PASS"],
+        ["사업명·본문 의미 관련성", "직접근거 의미 불일치 0건", f"{semantic_direct_mismatch}건", "BLOCK" if semantic_direct_mismatch else "PASS"],
+        ["Proposal 제외근거 인용", "제외 ID 0건", f"{len(excluded_citations)}건" + (f" · {', '.join(excluded_citations)}" if excluded_citations else ""), "BLOCK" if excluded_citations else "PASS"],
         ["Citation 의미 정합성", "주장과 source_type 불일치 0건", f"{len(semantic_mismatches)}건", "BLOCK" if semantic_mismatches else "PASS"],
         ["KOICA 반복 레코드", "통합·상태 표시", f"통합 그룹 {duplicate_groups}개", "REVIEW" if duplicate_groups else "PASS"],
         ["확정형 자동 처방", "금지 표현 0건", f"{len(forbidden_prescriptions)}건", "BLOCK" if forbidden_prescriptions else "PASS"],
@@ -3513,13 +3632,13 @@ def render_builder(data):
         generation_mode = "OpenAI LLM + RAG" if llm_used else "Local RAG"
         builder_result["generation_mode"] = generation_mode
         generation_metadata = f"\n\n## 생성 메타데이터\n- 생성모드: {generation_mode}\n- 모델 버전: {MODEL_VERSION}\n- 근거 범위: {country} · {sector}\n"
-        proposal = proposal + generation_metadata
-        evidence_pack = build_rag_evidence_pack(
+        proposal = normalize_generated_proposal_language(proposal) + generation_metadata
+        evidence_pack = normalize_evidence_citation_prefix(build_rag_evidence_pack(
             country, sector, keywords, rag_docs, design_assumptions, builder_result
-        ) + generation_metadata
-        brief = build_policy_brief(
+        )) + generation_metadata
+        brief = normalize_generated_proposal_language(build_policy_brief(
             country, sector, row, rag_docs, design_assumptions, builder_result
-        ) + generation_metadata
+        )) + generation_metadata
         proposal_pdf = markdown_to_pdf_bytes("K-ODA Compass 근거 기반 AI 사업제안서", proposal)
         brief_pdf = markdown_to_pdf_bytes(f"K-ODA Compass {country} {sector} 1-page Brief", brief)
         quality_status, quality_report = builder_output_quality_report(
