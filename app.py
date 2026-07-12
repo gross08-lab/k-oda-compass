@@ -2328,6 +2328,119 @@ def build_policy_brief(
 """
 
 
+def build_proposal_pdf_markdown(
+    country: str,
+    sector: str,
+    user_type: str,
+    scale: str,
+    keywords: str,
+    row: pd.Series,
+    result: dict[str, object],
+    generation_mode: str,
+) -> str:
+    docs = result_evidence_frame(result)
+    proposal_used = docs.get("proposal_used", pd.Series(True, index=docs.index)).fillna(False).astype(bool)
+    docs = docs.loc[proposal_used].copy()
+
+    def ids_for(*, relevance: str | None = None, source_type: str | None = None) -> list[str]:
+        selected = docs
+        if relevance is not None:
+            selected = selected.loc[selected["relevance_type"] == relevance]
+        if source_type is not None:
+            selected = selected.loc[selected["Source_Type"] == source_type]
+        return selected.get("Citation_ID", pd.Series(dtype=str)).dropna().astype(str).tolist()
+
+    def cite(ids: list[str]) -> str:
+        return ", ".join(f"[{citation_id}]" for citation_id in ids) or "근거 ID 없음"
+
+    direct_cps = ids_for(relevance="공공행정 정책방향 직접근거")
+    direct_koica = ids_for(relevance="직접 유사사업")
+    indirect_koica = ids_for(relevance="간접 관련 협력경험")
+    policy_risk = ids_for(source_type="Policy/Risk")
+    wdi = ids_for(source_type="WDI")
+    score_model = ids_for(source_type="Score Model")
+    cps_background = ids_for(relevance="CPS 국가배경 참고근거")
+
+    assumptions = result.get("assumptions", []) if isinstance(result.get("assumptions"), list) else []
+    outcome_goal = next(
+        (safe_text(item.get("value")) for item in assumptions if item.get("assumption_id") == "A07"),
+        "현지 수요검증과 운영모델 검토",
+    )
+    evidence_rows = [
+        ["직접 CPS 정책근거", cite(direct_cps), "CPS 공공행정 정책방향"],
+        ["직접 KOICA 유사사업", cite(direct_koica), "디지털 기록관리 유사사업"],
+        ["간접 협력경험", cite(indirect_koica), "직접 효과근거가 아닌 협력경험"],
+        ["정책·실행환경 파생근거", cite(policy_risk), "현지 실사를 대체하지 않는 보조점수"],
+        ["WDI 보조신호", cite(wdi), "국가 개발여건 설명"],
+    ]
+    evidence_table = "\n".join(
+        ["| 구분 | Evidence ID | 문서에서의 역할 |", "|---|---|---|"]
+        + [f"| {label} | {ids} | {role} |" for label, ids, role in evidence_rows]
+    )
+
+    return f"""## 프로젝트 개요
+| 항목 | 내용 |
+|---|---|
+| 대상국·분야 | {country} · {sector} |
+| 사용자 유형 | {user_type} |
+| 사업 규모 | {scale} |
+| 핵심 키워드 | {keywords} |
+
+## 배경 및 필요성
+{country}의 국가 우선검토 점수는 {fmt_number(row.get('K_ODA_Opportunity_Score_V21'))}/100이며, 개발수요와 기존 협력경험을 함께 검토한 예비 후보입니다 {cite(score_model)}.
+
+CPS 공여현황은 국가배경을 설명하는 참고근거이며 직접 정책수요와 구분합니다 {cite(cps_background)}. WDI는 국가 개발여건의 보조 신호로만 활용합니다.
+
+## 목표
+잠정 성과목표는 **{outcome_goal}**입니다. 현지 수요조사와 수행기관 협의를 거쳐 최종 목표와 KPI를 확정합니다.
+
+## 주요 활동
+1. 관계부처·잠재 사용자 인터뷰를 통한 현지 수요와 데이터 가용성 검증
+2. 파트너의 법적 권한·인력·예산·운영역량 검토 및 소규모 파일럿 설계
+3. 잠정 KPI 검증, 파일럿 성과검토 및 확장 여부 결정
+
+## 정책정합성
+CPS의 원조관리 플랫폼·정부 재정관리 관련 정책방향을 직접근거로 사용하며 정합성을 예비 검토합니다 {cite(direct_cps)}.
+
+## 기존 KOICA 협력경험
+디지털 기록관리 사업은 직접 유사사업입니다 {cite(direct_koica)}. 그 밖의 학위·역량강화 사업은 직접 효과근거가 아닌 간접 협력경험으로만 참고합니다 {cite(indirect_koica)}.
+
+기존 KOICA 사업은 한국의 관련 협력경험을 보여주며, 사업 효과성과 현지 수요는 별도로 검증해야 합니다.
+
+## 핵심 리스크
+- 현지수요·파트너 참여 의향·운영주체가 아직 검증되지 않았습니다.
+- 공개된 정책·실행환경 점수는 현지 제도·조달·집행 실사를 대체하지 않습니다 {cite(policy_risk)}.
+- CPS 버전, WDI 최신연도와 KOICA 원자료 갱신 여부를 재확인해야 합니다.
+
+---
+
+## Evidence 요약
+{evidence_table}
+
+전체 Evidence 상세, 원문 위치, URL·수집일과 제외근거는 별첨 Evidence Pack에서 확인합니다. 제외 판정 근거는 Proposal 출력에 포함하지 않습니다.
+
+## WDI 역할
+{safe_text(result.get('wdi_role'))}
+
+## AI 생성 예비 설계 가정
+{safe_text(result.get('assumption_notice'))}
+
+{chr(10).join(result_assumption_lines(result))}
+
+## 다음 검증 단계
+1. 직접 CPS 정책근거 {cite(direct_cps)} 원문과 최신 국가협력전략을 교차확인합니다.
+2. 관계부처·잠재 사용자·현지 파트너 인터뷰로 수요와 수행역량을 검증합니다.
+3. 예산·기간·교육대상·KPI 가정을 수행기관과 조정합니다.
+4. 소규모 파일럿의 성과와 집행위험을 검토한 뒤 확장 여부를 결정합니다.
+
+## 생성 메타데이터
+- 생성모드: {generation_mode}
+- 모델 버전: {MODEL_VERSION}
+- 근거 범위: {country} · {sector}
+- 상세근거: Evidence Pack 참조
+"""
+
+
 def korean_pdf_font_status() -> tuple[bool, str]:
     missing = [str(path.relative_to(APP_DIR)) for path in (REGULAR_FONT_PATH, BOLD_FONT_PATH) if not path.exists()]
     if missing:
@@ -2380,30 +2493,30 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
 
     buffer = io.BytesIO()
     page_width, _ = A4
-    margin = 34
+    margin = 44
     usable_width = page_width - margin * 2
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         leftMargin=margin,
         rightMargin=margin,
-        topMargin=30,
-        bottomMargin=30,
+        topMargin=40,
+        bottomMargin=40,
         title=title,
         author="K-ODA Compass",
         subject="근거 기반 AI ODA 사업제안서",
     )
     styles = {
-        "title": ParagraphStyle("KoreanTitle", fontName=bold_font, fontSize=14.5, leading=18, spaceAfter=8, alignment=TA_CENTER, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
-        "h1": ParagraphStyle("KoreanH1", fontName=bold_font, fontSize=12.5, leading=16, spaceBefore=7, spaceAfter=4, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
-        "h2": ParagraphStyle("KoreanH2", fontName=bold_font, fontSize=10.2, leading=13, spaceBefore=5, spaceAfter=3, wordWrap="CJK", textColor=colors.HexColor("#315D86")),
-        "h3": ParagraphStyle("KoreanH3", fontName=bold_font, fontSize=9.2, leading=12, spaceBefore=4, spaceAfter=2, wordWrap="CJK"),
-        "body": ParagraphStyle("KoreanBody", fontName=regular_font, fontSize=8, leading=10.8, spaceAfter=2, wordWrap="CJK"),
-        "bullet": ParagraphStyle("KoreanBullet", fontName=regular_font, fontSize=8, leading=10.8, leftIndent=10, firstLineIndent=-7, spaceAfter=1.5, wordWrap="CJK"),
-        "quote": ParagraphStyle("KoreanQuote", fontName=regular_font, fontSize=7.8, leading=10.5, leftIndent=7, rightIndent=7, borderColor=colors.HexColor("#B8C7D6"), borderWidth=0.7, borderPadding=4, backColor=colors.HexColor("#F4F7FA"), wordWrap="CJK"),
-        "table_header": ParagraphStyle("KoreanTableHeader", fontName=bold_font, fontSize=7.2, leading=9, wordWrap="CJK", textColor=colors.white),
-        "table_body": ParagraphStyle("KoreanTableBody", fontName=regular_font, fontSize=6.8, leading=8.5, wordWrap="CJK"),
-        "footer": ParagraphStyle("KoreanFooter", fontName=regular_font, fontSize=7.5, leading=9, alignment=TA_RIGHT, textColor=colors.HexColor("#667788")),
+        "title": ParagraphStyle("KoreanTitle", fontName=bold_font, fontSize=19, leading=23, spaceAfter=12, alignment=TA_CENTER, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
+        "h1": ParagraphStyle("KoreanH1", fontName=bold_font, fontSize=14, leading=17, spaceBefore=9, spaceAfter=5, wordWrap="CJK", textColor=colors.HexColor("#173A5E")),
+        "h2": ParagraphStyle("KoreanH2", fontName=bold_font, fontSize=13, leading=16, spaceBefore=8, spaceAfter=4, wordWrap="CJK", textColor=colors.HexColor("#315D86")),
+        "h3": ParagraphStyle("KoreanH3", fontName=bold_font, fontSize=11.5, leading=14, spaceBefore=6, spaceAfter=3, wordWrap="CJK"),
+        "body": ParagraphStyle("KoreanBody", fontName=regular_font, fontSize=10.5, leading=12.8, spaceAfter=4, wordWrap="CJK"),
+        "bullet": ParagraphStyle("KoreanBullet", fontName=regular_font, fontSize=10.5, leading=12.8, leftIndent=12, firstLineIndent=-8, spaceAfter=2.5, wordWrap="CJK"),
+        "quote": ParagraphStyle("KoreanQuote", fontName=regular_font, fontSize=10.5, leading=12.8, leftIndent=8, rightIndent=8, borderColor=colors.HexColor("#B8C7D6"), borderWidth=0.7, borderPadding=6, backColor=colors.HexColor("#F4F7FA"), wordWrap="CJK"),
+        "table_header": ParagraphStyle("KoreanTableHeader", fontName=bold_font, fontSize=9.2, leading=11.2, wordWrap="CJK", textColor=colors.white),
+        "table_body": ParagraphStyle("KoreanTableBody", fontName=regular_font, fontSize=9, leading=11, wordWrap="CJK"),
+        "footer": ParagraphStyle("KoreanFooter", fontName=regular_font, fontSize=8, leading=10, alignment=TA_RIGHT, textColor=colors.HexColor("#667788")),
     }
 
     def plain_markdown(value: str) -> str:
@@ -2414,7 +2527,9 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
             return f"KODACITATION{len(citations) - 1}TOKEN"
 
         value = re.sub(r"\[(?:E)?\d{1,2}\]", protect_citation, value, flags=re.IGNORECASE)
+        value = re.sub(r"^#{1,6}\s*", "", value.strip())
         value = value.replace("**", "").replace("`", "")
+        value = re.sub(r"#{3,6}", "", value)
         escaped = escape(value.strip())
         for index, citation in enumerate(citations):
             escaped = escaped.replace(f"KODACITATION{index}TOKEN", citation)
@@ -2427,7 +2542,7 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
         raw = lines[index].rstrip()
         line = raw.strip()
         if not line:
-            story.append(Spacer(1, 1))
+            story.append(Spacer(1, 3))
             index += 1
             continue
         if line == "---":
@@ -2455,18 +2570,19 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#C8D3DE")),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F9FB")]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]))
-            story.extend([table, Spacer(1, 3)])
+            story.extend([table, Spacer(1, 6)])
             continue
-        heading = re.match(r"^(#{1,3})\s+(.*)$", line)
+        heading = re.match(r"^(#{1,6})\s+(.*)$", line)
         if heading:
-            heading_text = heading.group(2).replace("**", "").strip()
-            if heading_text != title.strip():
-                story.append(Paragraph(plain_markdown(heading_text), styles[f"h{len(heading.group(1))}"]))
+            heading_text = plain_markdown(heading.group(2))
+            if heading_text != plain_markdown(title):
+                heading_level = min(len(heading.group(1)), 3)
+                story.append(Paragraph(heading_text, styles[f"h{heading_level}"]))
         elif re.match(r"^[-*]\s+", line):
             story.append(Paragraph("• " + plain_markdown(re.sub(r"^[-*]\s+", "", line)), styles["bullet"]))
         elif re.match(r"^\d+\.\s+", line):
@@ -2479,15 +2595,15 @@ def markdown_to_pdf_bytes(title: str, markdown_text: str) -> bytes | None:
 
     def add_footer(canvas, document) -> None:
         canvas.saveState()
-        canvas.setFont(regular_font, 7.5)
+        canvas.setFont(regular_font, 8)
         canvas.setFillColor(colors.HexColor("#667788"))
-        canvas.drawRightString(A4[0] - margin, 18, f"K-ODA Compass · {document.page}페이지")
+        canvas.drawRightString(A4[0] - margin, 24, f"K-ODA Compass · {document.page}페이지")
         canvas.restoreState()
 
     class KoreanCanvas(Canvas):
         def __init__(self, *args, **kwargs):
             kwargs["initialFontName"] = regular_font
-            kwargs["initialFontSize"] = 9.2
+            kwargs["initialFontSize"] = 10.5
             super().__init__(*args, **kwargs)
 
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer, canvasmaker=KoreanCanvas)
@@ -3711,7 +3827,10 @@ def render_builder(data):
         brief = normalize_generated_proposal_language(build_policy_brief(
             country, sector, row, rag_docs, design_assumptions, builder_result
         ), builder_result) + generation_metadata
-        proposal_pdf = markdown_to_pdf_bytes("K-ODA Compass 근거 기반 AI 사업제안서", proposal)
+        proposal_pdf_markdown = build_proposal_pdf_markdown(
+            country, sector, user_type, scale, keywords, row, builder_result, generation_mode
+        )
+        proposal_pdf = markdown_to_pdf_bytes("K-ODA Compass 근거 기반 AI 사업제안서", proposal_pdf_markdown)
         brief_pdf = markdown_to_pdf_bytes(f"K-ODA Compass {country} {sector} 1-page Brief", brief)
         quality_status, quality_report = builder_output_quality_report(
             country, sector, rag_docs, proposal, brief, evidence_pack, proposal_pdf, builder_result

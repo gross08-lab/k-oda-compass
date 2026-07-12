@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -62,9 +63,19 @@ def builder_artifacts() -> dict:
     )
     brief = app.build_policy_brief(country, sector, row, docs, assumptions, result)
     evidence_pack = app.build_rag_evidence_pack(country, sector, "디지털 행정", docs, assumptions, result)
+    proposal_pdf_markdown = app.build_proposal_pdf_markdown(
+        country,
+        sector,
+        "CSO/NGO",
+        "소규모 파일럿",
+        "디지털 행정, 현지 역량강화, 성과관리",
+        row,
+        result,
+        "Local RAG",
+    )
     proposal_pdf = app.markdown_to_pdf_bytes(
-        "K-ODA Compass 탄자니아 공공행정 근거 기반 AI 사업제안서",
-        proposal,
+        "K-ODA Compass 근거 기반 AI 사업제안서",
+        proposal_pdf_markdown,
     )
     return {
         "country": country,
@@ -75,6 +86,7 @@ def builder_artifacts() -> dict:
         "proposal": proposal,
         "brief": brief,
         "evidence_pack": evidence_pack,
+        "proposal_pdf_markdown": proposal_pdf_markdown,
         "proposal_pdf": proposal_pdf,
     }
 
@@ -204,6 +216,24 @@ def test_pdf_is_generated_with_embedded_truetype_font(builder_artifacts: dict) -
     assert b"/FontFile2" in proposal_pdf
     assert b"Helvetica" not in proposal_pdf
     assert len(proposal_pdf) > 50_000
+    assert len(re.findall(rb"/Type\s*/Page(?!s)", proposal_pdf)) == 2
+
+
+def test_proposal_pdf_uses_balanced_two_page_summary(builder_artifacts: dict) -> None:
+    pdf_markdown = builder_artifacts["proposal_pdf_markdown"]
+
+    assert pdf_markdown.count("\n---\n") == 1
+    assert "####" not in pdf_markdown
+    assert "###" not in pdf_markdown
+    assert "| 직접 CPS 정책근거 | [E09] |" in pdf_markdown
+    assert "| 직접 KOICA 유사사업 | [E03] |" in pdf_markdown
+    assert "| 간접 협력경험 | [E01], [E02], [E06], [E07] |" in pdf_markdown
+    assert "| 정책·실행환경 파생근거 | [E12] |" in pdf_markdown
+    assert "| WDI 보조신호 | [E13], [E14], [E15], [E16] |" in pdf_markdown
+    assert "E04" not in pdf_markdown
+    assert "E10" not in pdf_markdown
+    for assumption_id in (f"A{index:02d}" for index in range(1, 8)):
+        assert f"[{assumption_id}]" in pdf_markdown
 
 
 def test_builder_quality_report_has_no_block(builder_artifacts: dict) -> None:
