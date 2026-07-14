@@ -11,7 +11,7 @@ k-oda-compass
 Then push this local repository:
 
 ```bash
-cd /Users/kimjaeyoung/Documents/Codex/2026-07-07/2026-ai/outputs/KODA_Compass_Streamlit_MVP_v2_1_5_RAG
+cd <KODA_COMPASS_REPOSITORY>
 git remote add origin https://github.com/gross08-lab/k-oda-compass.git
 git push -u origin main
 ```
@@ -31,7 +31,7 @@ app.py
 
 ```toml
 OPENAI_API_KEY = "..."
-OPENAI_MODEL = "gpt-5.2"
+OPENAI_MODEL = "<OPTIONAL_MODEL_NAME>"
 ```
 
 6. Deploy.

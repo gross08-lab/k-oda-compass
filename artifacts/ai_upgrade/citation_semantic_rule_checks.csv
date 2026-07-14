@@ -1,0 +1,11 @@
+﻿line,claim_type,citation_ids,allowed_source_types,invalid_ids,status,text
+8,CPS policy claim,E01,CPS PDF,,PASS,- CPS 정책방향과의 정책정합성은 선택 분야와 일치하는 정책원문에서 예비 확인합니다 [E01].
+9,execution-risk claim,E12,Policy/Risk,,PASS,"- 실행가능성은 공개된 정책·실행환경 파생점수에 근거한 보조 판단이며, 현지 파트너 역량과 집행위험을 추가 검증해야 합니다 [E12]."
+10,KOICA experience claim,E08|E02|E06,KOICA Project|Sector Portfolio,,PASS,"- E03 디지털 기록관리 사업은 직접 유사사업이며, E01·E02는 간접 관련 협력경험으로만 참고합니다 [E08] [E02], [E06]."
+37,CPS policy claim,E01,CPS PDF,,PASS,"- [E01] **공공행정 정책방향 직접근거** · **탄자니아 CPS 원문 p.8 · 공공행정**: (4) 수원 체계 □ 재무기획부는 수원총괄기관으로서 정부채무관리법(Government Loan, Guarantees and Grants Act)에 근거하여 정부차관 및 무상원조를 총괄 ㅇ 차관신청 결정은 동법령·국가부채관리방침(National Debt Strategy)에 따라 재무기획부의 기술적부채관리위원회(Technical Debts Management Committee)와 국가부채관리위원회(National Debts Manage"
+40,CPS policy claim,E05,CPS PDF,,PASS,"- [E05] **CPS 국가배경 참고근거** · **탄자니아 CPS 원문 p.9 · 공공행정**: 2 주요국 공여 활동 □ (지원 총액) ’10-‘19년 국제사회의 지원 총액은 약 270억 달러 < 탄자니아의 ODA 수원 추이 > (단위: 백만 달러) 연도 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 총 계 금액 2,902 2,333 2,709 3,454 2,560…"
+46,KOICA experience claim,E02,KOICA Project|Sector Portfolio,,PASS,- [E02] **간접 관련 협력경험** · **Public Audit Management('19-'21)** · 관측 연도 2021 · 직접 유사사업이 아닌 협력경험 참고
+47,KOICA experience claim,E06,KOICA Project|Sector Portfolio,,PASS,"- [E06] **간접 관련 협력경험** · **Master's Degree Program in Sustainable Regional Development(2023)** · 관측 연도 2023, 2024 · 직접 유사사업이 아닌 협력경험 참고"
+59,execution-risk claim,E12,Policy/Risk,,PASS,"- 정책·실행환경 파생점수는 정책 일치도 72.5, 실행가능성 41.6이며 현지조사나 기관 실사를 대체하지 않습니다 [E12]."
+60,KOICA experience claim,E11,KOICA Project|Sector Portfolio,,PASS,- 기존 KOICA 분야 집계는 과거 협력경험을 보여주며 현재 사업 타당성과 동일한 의미가 아닙니다 [E11].
+96,execution-risk claim,E12,Policy/Risk,,PASS,- 실행환경 위험: 정책·실행환경 보조지표를 참고하되 현지 제도·조달·집행 절차를 별도 검토합니다 [E12].

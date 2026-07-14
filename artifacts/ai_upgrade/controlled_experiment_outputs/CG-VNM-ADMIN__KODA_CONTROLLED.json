@@ -10,7 +10,7 @@
     "repeats": 1,
     "prompt_version": "controlled-generation-v1"
   },
-  "executed_at_utc": "2026-07-12T22:57:41.259849+00:00",
+  "executed_at_utc": "2026-07-14T04:23:27.491476+00:00",
   "prompt_sha256": "3ef8c7b19ae492ffa2a85cb4ccb34783ba5f89335fb8e5927614eaeb8f5e7ab6",
   "evidence_ids": [
     "E01"

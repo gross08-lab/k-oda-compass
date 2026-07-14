@@ -1,0 +1,4 @@
+phase,source_scope,artifact_status,Recall@1,Recall@3,Recall@5,MRR,nDCG@5,avg_latency_ms,p95_latency_ms,notes
+initial_filtered_hybrid,"captured command output before term expansion",RECONSTRUCTED_FROM_CAPTURED_OUTPUT,0.439024,0.853659,0.890244,0.631098,0.697225,142.496,145.225,"The overwritten raw CSV is unavailable; values are retained only as a captured-log baseline."
+term_expansion_before_bm25,"frozen Test 91 queries; copied raw artifacts",RAW_ARTIFACT_PRESERVED,0.475610,0.914634,0.987805,0.684959,0.761762,152.705,162.692,"See retrieval_benchmark_before_bm25/."
+final_candidate_bm25,"frozen Test 91 queries; final run",RAW_ARTIFACT_PRESERVED,0.536585,0.878049,1.000000,0.715650,0.786976,11.586,16.961,"Candidate-local BM25/IDF plus term coverage; L=1.0 E=0.0 phrase=1.5 selected on Dev only."

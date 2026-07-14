@@ -1,0 +1,23 @@
+{
+  "audit_date": "2026-07-14",
+  "scope": [
+    "artifacts/ai_upgrade/baseline_outputs/baseline_proposal.md",
+    "artifacts/ai_upgrade/baseline_outputs/baseline_brief.md",
+    "artifacts/ai_upgrade/baseline_outputs/baseline_evidence_pack.md"
+  ],
+  "evidence_objects": 16,
+  "citation_occurrences": 47,
+  "citation_occurrences_resolved": 47,
+  "structural_resolution_rate": 1.0,
+  "excluded_id_violations": 0,
+  "cps_evidence_objects": 3,
+  "cps_source_chain_pass": 3,
+  "original_pdf_spotchecks": 17,
+  "original_pdf_exact_normalized_matches": 17,
+  "deterministic_semantic_rule_rows": 10,
+  "deterministic_semantic_rule_reviews": 0,
+  "claim_citation_human_judgments": 0,
+  "cohens_kappa": null,
+  "claim_citation_status": "UNRESOLVED_NO_120_PAIR_HUMAN_JUDGMENT_TABLE",
+  "status": "PASS_STRUCTURAL_ONLY"
+}

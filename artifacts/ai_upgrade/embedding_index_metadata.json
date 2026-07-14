@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "created_at_utc": "2026-07-12T17:00:27Z",
+  "created_at_utc": "2026-07-13T16:20:43Z",
   "source_file": "KODA_cps_pdf_chunks.csv",
-  "source_sha256": "d0b48829df14e2b1fc2d4af7e3942198243320ec8cc10bc37c5ff854a963986c",
-  "source_rows": 806,
-  "valid_rows": 806,
+  "source_sha256": "dca7c00b0b4610dc5ecd3061547caf25bbe90e5697a896a1f8126322e50d8598",
+  "source_rows": 1100,
+  "valid_rows": 1100,
   "model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
   "fastembed_version": "0.8.0",
   "dimension": 384,
   "license": "Apache-2.0",
   "pooling_note": "FastEmbed 0.8.0 mean-pooling implementation; fixed for this benchmark snapshot",
-  "build_seconds": 37.953676,
-  "vector_bytes_uncompressed": 1238016,
+  "build_seconds": 53.507905,
+  "vector_bytes_uncompressed": 1689600,
   "python": "3.14.6",
   "platform": "macOS-14.1.2-arm64-arm-64bit-Mach-O",
   "model_files": [
@@ -52,5 +52,5 @@
     }
   ],
   "index_file": "artifacts/ai_upgrade/embedding_index.npz",
-  "index_bytes": 1150060
+  "index_bytes": 1569151
 }

@@ -2,7 +2,11 @@
   "version": 1,
   "default_mode": "lexical",
   "source": {
-    "chunk_file": "KODA_cps_pdf_chunks.csv"
+    "pdf_directory": "data/cps_pdfs",
+    "page_cache": "data/cps_page_text.csv",
+    "chunk_file": "KODA_cps_pdf_chunks.csv",
+    "chunk_max_chars": 1024,
+    "chunk_overlap_chars": 120
   },
   "embedding": {
     "provider": "fastembed",
@@ -17,15 +21,29 @@
     "file": "artifacts/ai_upgrade/embedding_index.npz",
     "metadata": "artifacts/ai_upgrade/embedding_index_metadata.json"
   },
+  "lexical": {
+    "scoring": "candidate-local-bm25-idf",
+    "bm25_k1": 1.2,
+    "bm25_b": 0.75,
+    "term_coverage_weight": 2.0,
+    "phrase_bonus": 1.5,
+    "phrase_bonus_dev_candidates": [0.0, 0.75, 1.5, 2.25]
+  },
   "hybrid": {
     "normalization": "minmax",
-    "lexical_weight": 0.2,
-    "embedding_weight": 0.8,
-    "dev_candidates": [0.2, 0.4, 0.5, 0.6, 0.8]
+    "lexical_weight": 1.0,
+    "embedding_weight": 0.0,
+    "dev_candidates": [0.2, 0.4, 0.5, 0.6, 0.8, 0.9, 1.0],
+    "operating_mode": "hybrid_filtered"
   },
   "benchmark": {
     "top_k": 5,
     "dev_fraction": 0.3,
-    "split_seed": "koda-retrieval-v1"
+    "split_seed": "koda-retrieval-v1",
+    "gold_sha256": "796d6293687f76a2f43b318f5ccd4cf7e2ef06d2c7892d41cfdb3585bdbf3159",
+    "gold_label_fingerprint": "c42d43130647b074d5c8e6b7b856aef44009a549f768f17433506792821d0446",
+    "gold_rows": 120,
+    "dev_rows": 29,
+    "test_rows": 91
   }
 }

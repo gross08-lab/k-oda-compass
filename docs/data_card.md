@@ -32,5 +32,5 @@
 ## Known Caveats
 
 - Raw commitment/disbursement values are displayed as raw values until official unit metadata is reconfirmed.
-- CPS alignment combines parsed CPS PDF chunks and public CSV proxy fields. As of the local OCR audit, 663/921 CPS pages are readable via text layer and 7 image-only PDFs require Tesseract/OCR for full-text coverage.
+- CPS alignment combines parsed CPS PDF chunks and public CSV proxy fields. The current operational page cache covers 901/921 pages: 652 pages are directly extracted and 249 pages are OCR-backed. The remaining 20 pages are excluded from search, and OCR-backed evidence requires source-page review for possible recognition errors.
 - Project descriptions can contain heterogeneous formatting from source data.

@@ -21,7 +21,7 @@ Use this before submission to collect quick evidence that the service solves a r
 
 1. Can you understand why this country-sector pair was recommended?
 2. Are the CPS/KOICA/WDI citations useful for trust?
-3. Would the 1-page brief help you start an ODA project idea?
+3. Would the concise Brief help you start an ODA project idea?
 4. What information is still missing before real project planning?
 5. Score usefulness from 1 to 5.
 

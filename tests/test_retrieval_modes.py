@@ -101,6 +101,24 @@ def test_ranking_metrics() -> None:
 
 def test_gold_split_is_deterministic() -> None:
     query_id = "GOLD-RWA_TECH-DIRECT_KEYWORD"
-    first = hashlib.sha256(f"koda-retrieval-v1|{query_id}".encode()).hexdigest()
-    second = hashlib.sha256(f"koda-retrieval-v1|{query_id}".encode()).hexdigest()
+    first = hashlib.sha256(f"koda-retrieval-v2|{query_id}".encode()).hexdigest()
+    second = hashlib.sha256(f"koda-retrieval-v2|{query_id}".encode()).hexdigest()
     assert first == second
+
+
+def test_cross_language_oda_terms_expand_before_lexical_ranking(tmp_path: Path) -> None:
+    write_fixture(tmp_path)
+    engine = RetrievalEngine(tmp_path, tmp_path / "config.json")
+    query = RetrievalQuery("q-en", "vocational education and digital skills", "국가A", "교육")
+    rows, _ = engine.search(query, "lexical", 5)
+    assert [row["chunk_id"] for row in rows] == ["A-1"]
+
+
+def test_lexical_ranking_is_deterministic(tmp_path: Path) -> None:
+    write_fixture(tmp_path)
+    engine = RetrievalEngine(tmp_path, tmp_path / "config.json")
+    query = RetrievalQuery("q-repeat", "digital vocational education", "국가A", "교육")
+    first, _ = engine.search(query, "lexical", 5)
+    second, _ = engine.search(query, "lexical", 5)
+    assert [row["chunk_id"] for row in first] == [row["chunk_id"] for row in second]
+    assert [row["lexical_score"] for row in first] == [row["lexical_score"] for row in second]

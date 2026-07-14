@@ -9,7 +9,7 @@
 5. Click `RAG형 AI 사업기획서 생성`.
 6. Show `근거 Citation`: CPS PDF, KOICA, WDI, and policy evidence IDs are visible.
 7. Show `점수 기여도`: the recommendation is explainable, not a black box.
-8. Download `Evidence Pack` and `1-page Brief`.
+8. Download `Evidence Pack MD`, `Brief MD`, `Proposal PDF`, and `Brief PDF`.
 9. Open `AI검증`: RAG corpus, sensitivity, and hallucination controls.
 10. Open `배포`: show Streamlit/GitHub QR.
 

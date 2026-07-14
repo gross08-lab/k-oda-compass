@@ -1,0 +1,42 @@
+{
+  "phase": "dev_only",
+  "gold_freeze": {
+    "gold_file": "benchmarks/retrieval_gold_set.csv",
+    "gold_sha256": "796d6293687f76a2f43b318f5ccd4cf7e2ef06d2c7892d41cfdb3585bdbf3159",
+    "gold_label_fingerprint": "c42d43130647b074d5c8e6b7b856aef44009a549f768f17433506792821d0446",
+    "gold_rows": 120,
+    "dev_rows": 29,
+    "test_rows": 91,
+    "unique_query_ids": 120,
+    "status": "PASS",
+    "mismatches": {}
+  },
+  "dev_queries": 29,
+  "test_queries_not_executed": 91,
+  "lexical_weight": 1.0,
+  "embedding_weight": 0.0,
+  "phrase_bonus": 1.5,
+  "selection_key": "nDCG@5, MRR, Recall@5, metadata mismatch, latency",
+  "selected_dev_metrics": {
+    "retrieval_mode": "hybrid_filtered",
+    "split": "dev_tuning",
+    "queries": 29,
+    "positive_queries": 26,
+    "negative_queries": 3,
+    "lexical_weight": 1.0,
+    "embedding_weight": 0.0,
+    "phrase_bonus": 1.5,
+    "Recall@1": 0.5384615384615384,
+    "Recall@3": 0.8076923076923077,
+    "Recall@5": 1.0,
+    "Precision@5": 0.2,
+    "MRR": 0.7173076923076922,
+    "nDCG@5": 0.787778598603441,
+    "negative_rejection": 0.0,
+    "country_mismatch": 0.0,
+    "sector_mismatch": 0.0,
+    "evidence_class_mismatch": 0.0,
+    "avg_latency_ms": 11.55358620689655,
+    "p95_latency_ms": 15.83
+  }
+}

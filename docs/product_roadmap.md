@@ -6,7 +6,7 @@
 - Country profile and sector recommendation
 - RAG AI Builder
 - CPS PDF, KOICA, WDI, policy/risk citations
-- Evidence Pack and 1-page brief export
+- Evidence Pack and Brief export
 - AI validation and sensitivity analysis
 - Deployment/QR panel
 

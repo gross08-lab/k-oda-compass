@@ -1,0 +1,4 @@
+﻿evidence_id,chunk_id,pdf_file,page,chunk_exists,document_exists,page_in_range,page_cache_exists,country_match,page_match,excerpt_in_page_cache,document_hash_match,chunk_hash_match,status
+E01,CPS-TZA-p08-01,TZA.pdf,8,True,True,True,True,True,True,True,True,True,PASS
+E05,CPS-TZA-p09-01,TZA.pdf,9,True,True,True,True,True,True,True,True,True,PASS
+E10,CPS-TZA-p26-01,TZA.pdf,26,True,True,True,True,True,True,True,True,True,PASS

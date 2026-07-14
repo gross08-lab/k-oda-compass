@@ -26,3 +26,13 @@ tmp/
 __pycache__/
 *.pyc
 .env
+
+# Local CPS source PDFs
+data/cps_pdfs/
+artifacts/**/rendered_1800_final/
+
+# Local proposal PDF and render artifacts
+artifacts/proposal/final_submission_ai_upgrade/KODA_Compass_Proposal_FINAL_SUBMISSION_1800.pdf
+artifacts/proposal/final_submission_ai_upgrade/KODA_Compass_Contact_Sheet_1800.png
+artifacts/proposal/final_submission_ai_upgrade/rendered_0714/
+artifacts/proposal/final_submission_ai_upgrade/source_pages/
