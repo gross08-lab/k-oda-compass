@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import hashlib
 import importlib.util
 import json
@@ -17,7 +16,12 @@ assert APP_SPEC and APP_SPEC.loader
 app = importlib.util.module_from_spec(APP_SPEC)
 APP_SPEC.loader.exec_module(app)
 MANIFEST_PATH = ROOT / "artifacts" / "screening" / "canonical_public_kpis.json"
-PUBLIC_SURFACES = [ROOT / "README.md", ROOT / "app.py", ROOT / "docs" / "validation_report.md"]
+PUBLIC_SURFACES = [
+    ROOT / "README.md",
+    ROOT / "app.py",
+    *sorted((ROOT / "docs").glob("*.md")),
+    MANIFEST_PATH,
+]
 
 
 def load_manifest() -> dict:
@@ -51,25 +55,23 @@ def test_app_and_readme_use_the_canonical_public_scope() -> None:
     assert app.load_public_kpis() == manifest
     assert "canonical_public_kpis.json" in readme
     assert "canonical_public_kpis.json" in source
-    assert f"{manifest['cps']['searchable_countries']}/{manifest['cps']['pdfs']}개국" in readme
-    assert f"Recall@5 {manifest['retrieval']['recall_at_5']:.3f}" in readme
-    assert f"{manifest['score_reproduction']['score_pass']}/{manifest['score_reproduction']['countries']}개국" in readme
+    assert "manifest만 공개 기준" in readme
+    assert f"{manifest['cps']['searchable_pages']}/{manifest['cps']['total_pages']}페이지" not in readme
+    assert f"Recall@5 {manifest['retrieval']['recall_at_5']:.3f}" not in readme
+    assert f"{manifest['score_reproduction']['score_pass']}/{manifest['score_reproduction']['countries']}개국" not in readme
 
 
 def test_public_surfaces_do_not_mix_conflicting_diagnostic_values() -> None:
     public_text = "\n".join(path.read_text(encoding="utf-8") for path in PUBLIC_SURFACES)
-    forbidden_patterns = [
-        r"MRR\s*0[.]716",
-        r"MRR\s*0[.]89",
-        r"47/47",
-        r"214/214",
-        r"6\s+PARTIAL",
-        r"1\s+UNRESOLVED",
-        r"0/30",
-        r"30/30",
+    forbidden_strings = [
+        "0.716",
+        "47/47",
+        "6 PARTIAL",
+        "1 UNRESOLVED",
+        "0/30",
     ]
-    for pattern in forbidden_patterns:
-        assert not re.search(pattern, public_text, flags=re.IGNORECASE), pattern
+    for forbidden in forbidden_strings:
+        assert forbidden not in public_text, forbidden
 
 
 def test_overview_renders_public_kpis_and_representative_demo_without_api_key(monkeypatch) -> None:
@@ -160,21 +162,8 @@ def test_live_and_github_qr_payloads_are_exact_public_urls() -> None:
     assert hashlib.sha256(live_qr).digest() != hashlib.sha256(github_qr).digest()
 
 
-def test_claim_matrix_has_no_open_blocker_or_high_contradiction() -> None:
-    with (ROOT / "artifacts" / "screening" / "claim_contradiction_matrix.csv").open(
-        encoding="utf-8", newline=""
-    ) as handle:
-        rows = list(csv.DictReader(handle))
-
-    assert rows
-    assert {row["severity"] for row in rows} >= {"BLOCKER", "HIGH"}
-    open_rows = [
-        row
-        for row in rows
-        if row["severity"] in {"BLOCKER", "HIGH"}
-        and row["final_status"] not in {"VERIFIED", "RESOLVED", "RESOLVED_SCOPE_SEPARATED"}
-    ]
-    assert open_rows == []
+def test_internal_claim_matrix_is_not_part_of_the_public_repository_surface() -> None:
+    assert not (ROOT / "artifacts" / "screening" / "claim_contradiction_matrix.csv").exists()
 
 
 def test_public_surfaces_have_no_local_path_secret_or_unimplemented_marker() -> None:

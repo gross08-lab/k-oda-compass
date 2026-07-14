@@ -1,17 +1,12 @@
-# LLM Verification Result
+# Optional LLM Runtime Verification
 
-- Checked at: 2026-07-10 14:50:09
-- Status: pending_api_key
-- Intended model: optional model selected through `OPENAI_MODEL`
-- OPENAI_API_KEY present: no
-- Evidence IDs prepared: E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, E13, E14, E15, E16
-- Prompt characters: 3172
+The OpenAI-enhanced generation path is optional. K-ODA Compass remains usable through Local RAG when no API key is configured or an external request fails.
 
-## Interpretation
+This operational note is not a public KPI report. Evaluator-facing validation values are defined only in `artifacts/screening/canonical_public_kpis.json`.
 
-The app's local RAG path is fully runnable, but an actual OpenAI Responses API call was not executed because no API key is available in this environment.
+## Runtime configuration
 
-## How to Produce the Final Capture
+Set `OPENAI_API_KEY` through an environment variable or Streamlit Secrets. `OPENAI_MODEL` may be used to select an optional configured model. Never commit secret values or generated credential files.
 
 ```bash
 export OPENAI_API_KEY="..."
@@ -19,4 +14,4 @@ export OPENAI_MODEL="<OPTIONAL_MODEL_NAME>"
 python3 scripts/verify_llm_call.py
 ```
 
-A successful run overwrites this file with model, citation count, response excerpt, and citation-presence checks.
+The verification script records the actual runtime outcome. A missing key produces an explicit pending result instead of a fabricated external-model success claim.

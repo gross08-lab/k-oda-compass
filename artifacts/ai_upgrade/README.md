@@ -1,6 +1,6 @@
 # Post-submission Engineering Diagnostics
 
-This directory preserves raw engineering diagnostics created after the submission benchmark snapshot. These files are not a second evaluator-facing KPI source.
+This directory contains reproducibility assets and summarized engineering diagnostics created after the submission benchmark snapshot. Detailed diagnostic dumps that can be mistaken for evaluator-facing KPIs are not published as product documentation.
 
 Use `../screening/canonical_public_kpis.json` for the Live Demo and README public validation surface. The canonical manifest includes only metrics that are reproducible under one current definition and denominator.
 
@@ -12,4 +12,4 @@ Use `../screening/canonical_public_kpis.json` for the Live Demo and README publi
 - Post-submission lineage diagnostics: recovery status from raw sources to stored component scores. This is separate from final score/rank reproduction.
 - Post-submission controlled-experiment records: harness inputs and explicit execution status. They are not public performance results unless the recorded calls were actually executed.
 
-Values from different categories must not be combined under one KPI name. Raw files remain unchanged for traceability; their scope is defined by each artifact's input files, date and denominator.
+Values from different categories must not be combined under one KPI name. Reproduction scripts may create detailed local outputs, but those files must not be committed as public KPIs. Public documentation must resolve validation values through the canonical manifest.

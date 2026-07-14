@@ -12,7 +12,7 @@
 
 - RAG형 AI Builder: KOICA/WDI/정책·리스크 근거를 먼저 검색하고, 생성문마다 `[E01]` 형식 citation을 자동 삽입합니다.
 - CPS PDF RAG: 국가협력전략 PDF 원문을 page-level chunk로 검색해 정책 정합성 근거를 생성문에 자동 삽입합니다.
-- CPS OCR Audit: 27개 CPS PDF, 901개 검색 페이지와 1,100개 유효 청크의 원본 SHA·페이지·재생성 결과를 공개합니다.
+- CPS OCR Audit: 원본 SHA·페이지·재생성 계보를 공개하며, 현재 범위 값은 canonical public manifest에서 확인합니다.
 - 실제 LLM 연동: `OPENAI_API_KEY`가 있으면 OpenAI Responses API로 근거팩 기반 문장을 고도화합니다.
 - 데모 안정성: API 키가 없어도 로컬 RAG 생성기로 동일한 Evidence Pack 기반 결과를 생성합니다.
 - 설명 가능한 추천: 국가별 점수 기여도, 정책·리스크 proxy, 민감도 분석을 앱 안에서 검증합니다.
@@ -38,26 +38,26 @@ streamlit run app.py
 
 ## 서류평가 공개 KPI
 
-앱 첫 화면과 이 README는 `artifacts/screening/canonical_public_kpis.json`을 단일 공개 기준으로 사용합니다.
+앱 첫 화면은 `artifacts/screening/canonical_public_kpis.json`을 로드합니다. README는 별도 수치표를 유지하지 않고 이 manifest만 공개 기준으로 안내합니다.
 
-| 공개 검증 항목 | 동일 정의로 재현되는 결과 |
+| 공개 검증 항목 | canonical manifest 필드 |
 |---|---|
-| CPS 원문 검색 | 27/27개국 · 901/921페이지 · 유효 청크 1,100개 |
-| 검색 Gold Set | 120질의 · Dev 29 / Test 91 · label/split 동결 |
-| Frozen Test Recall@5 | 1.000 · 정답 근거 보유 Test 82질의 기준 |
-| 점수·순위 재현 | 저장된 7개 구성점수 기준 50/50개국 · 최대 절대오차 0.005 |
-| 근거형 출력 | Evidence ID · CPS 문서/페이지 · Evidence Pack · A01~A07 · 5종 출력 |
-| API 없는 기본 경로 | Local RAG 생성·PDF 출력·fallback |
+| CPS 원문 검색 | `cps` |
+| 검색 Gold Set·운영 평가 | `retrieval` |
+| 점수·순위 재현 | `score_reproduction` |
+| 근거형 출력·가정 분리 | `features` |
+| API 없는 기본 경로 | `features.local_rag_without_api_key` |
+| 자동 QA | `qa` |
 
-제출 이후의 검색 순위 세부지표, baseline 출력 Citation 발생 횟수, 원자료부터 구성점수까지의 상류 계보 복구, 외부모델 통제실험 기록은 평가시점과 모집단이 다른 엔지니어링 진단입니다. 이를 제출 대조 KPI의 대체값으로 병합하지 않으며, 원시 기록은 `artifacts/ai_upgrade/`에 보존합니다.
+제출 이후의 검색 순위 세부지표, baseline 출력 Citation 발생 횟수, 원자료부터 구성점수까지의 상류 계보 복구, 외부모델 통제실험 기록은 평가시점과 모집단이 다른 엔지니어링 진단입니다. 이를 제출 대조 KPI의 대체값으로 병합하지 않으며, 상세 진단 덤프는 공개 제품 문서에서 제외합니다.
 
 ## 검색 벤치마크
 
-내부 Gold Set은 27개 CPS 국가의 원본 PDF SHA·페이지·정답 청크를 대조한 120개 질의 형식입니다. 고정 분할은 Dev 29 / Test 91이며, label fingerprint는 `c42d43130647b074d5c8e6b7b856aef44009a549f768f17433506792821d0446`입니다. Dev에서만 가중치와 phrase bonus를 선택한 뒤 동결 Test를 한 번 평가했습니다.
+내부 Gold Set은 원본 PDF SHA·페이지·정답 청크를 연결하고 Dev/Test 분할과 label fingerprint를 동결합니다. 현재 질의 수, 분할, fingerprint와 운영 평가값은 canonical public manifest의 `retrieval` 객체에서만 확인합니다.
 
-공개 서류평가 기준은 동결 Test의 정답 근거 보유 82질의에 대한 Recall@5 1.000입니다. 운영 경로는 국가·분야 필터를 적용하고, 현재 배포 기본 검색은 안정적인 lexical 방식입니다. 이 내부 벤치마크는 외부기관 인증이나 현지 사업수요 검증을 의미하지 않습니다.
+운영 경로는 국가·분야 필터를 적용하고, 현재 배포 기본 검색은 안정적인 lexical 방식입니다. 내부 벤치마크는 외부기관 인증이나 현지 사업수요 검증을 의미하지 않습니다.
 
-현재 공개 검증 범위는 27개국 CPS 검색, 저장된 7개 구성점수에서 최종 점수·순위까지의 재계산, Local RAG, 5종 출력, 현재 세션 Citation 구조입니다. 같은 이름의 지표라도 평가시점이나 모집단이 다른 제출 후 진단값은 공개 KPI와 혼용하지 않습니다.
+현재 공개 검증 범위의 정의와 분모는 canonical public manifest에 기록합니다. 같은 이름의 지표라도 평가시점이나 모집단이 다른 제출 후 진단값은 공개 KPI와 혼용하지 않습니다.
 
 선택형 임베딩 실험 환경은 Streamlit 배포 의존성과 분리되어 있습니다.
 
@@ -74,11 +74,11 @@ PYTHONPATH=. HF_HUB_OFFLINE=1 .venv-ai-upgrade/bin/python scripts/run_retrieval_
 
 ## 점수 계보
 
-공개 점수 재현 KPI의 범위는 저장된 7개 구성점수에서 Opportunity Score와 최종 순위를 다시 계산하는 단계입니다. 이 범위에서 50/50개국과 최대 절대오차 0.005가 재현됩니다. 원자료에서 구성점수까지의 제출 후 계보 복구 기록은 별도 엔지니어링 진단이며, 공개 점수 재현 KPI와 합산하지 않습니다.
+공개 점수 재현 KPI의 범위는 저장된 구성점수에서 Opportunity Score와 최종 순위를 다시 계산하는 단계입니다. 현재 범위와 결과는 canonical public manifest의 `score_reproduction` 객체에서만 확인합니다. 원자료에서 구성점수까지의 제출 후 계보 복구 기록은 별도 엔지니어링 진단이며 공개 KPI와 합산하지 않습니다.
 
 ## 제출 후 엔지니어링 진단
 
-검색 실험 이력, Citation 구조 감사, 상류 점수 계보 복구, 외부모델 통제실험 하네스는 `artifacts/ai_upgrade/`에 보존합니다. 이 디렉터리는 제출 이후의 내부 엔지니어링 기록이며, `canonical_public_kpis.json`에 포함되지 않은 값은 Live Demo의 제출 대조 성능으로 주장하지 않습니다.
+재현 스크립트와 진단 범위 요약은 `artifacts/ai_upgrade/`에서 관리합니다. 상세 로컬 진단값은 공개 KPI가 아니며, `canonical_public_kpis.json`에 포함되지 않은 값은 Live Demo의 제출 대조 성능으로 주장하지 않습니다.
 
 ## LLM 모드
 
@@ -161,19 +161,15 @@ python3 scripts/generate_submission_samples.py
 python3 scripts/generate_case_study_pdfs.py
 ```
 
-현재 운영 page cache 기준 CPS PDF 27개·921페이지 중 직접 추출 652페이지, OCR 검색 249페이지, 총 검색 가능 901페이지입니다. 나머지 20페이지는 검색 근거에서 제외됩니다. 이미지 중심 PDF 7개도 OCR-backed 청크로 검색되며, OCR 오인식 가능성은 원문 페이지 대조가 필요합니다.
+현재 운영 page cache의 PDF·페이지·OCR·청크 범위는 canonical public manifest의 `cps` 객체에서 확인합니다. 검색 불가능한 페이지는 근거에서 제외하며 OCR-backed 근거는 원문 페이지 대조가 필요합니다.
 
-## 제출 후 엔지니어링 원시 자산
+## 공개 검증 파일
 
-아래 파일은 검색·Citation·점수 계보·통제실험의 개발 진단 이력입니다. 평가시점과 모집단이 서로 다를 수 있으므로 Live Demo의 제출 대조 KPI로 사용하지 않습니다. 공개 기준은 `artifacts/screening/canonical_public_kpis.json`이며, 세부 범위는 `artifacts/ai_upgrade/README.md`에 구분했습니다.
+공개 KPI는 아래 단일 manifest만 사용합니다. 제출 후 엔지니어링 기록은 평가시점과 모집단이 다를 수 있으며 Live Demo KPI로 사용하지 않습니다.
 
-- `artifacts/ai_upgrade/cps_corpus_validation.json`: CPS PDF→페이지→청크 SHA·재현성
-- `artifacts/ai_upgrade/retrieval_benchmark_summary.json`: 동결 Test 네 방식 결과
-- `artifacts/ai_upgrade/retrieval_benchmark_history.md`: 변경 전후와 보존 범위
-- `artifacts/ai_upgrade/citation_audit_summary.json`: 현재 기준선 Citation 구조 감사
-- `artifacts/ai_upgrade/score_lineage_audit_summary.json`: 점수 상류 상태
-- `artifacts/ai_upgrade/controlled_experiment_summary.json`: A/B/C 실제 실행 수
-- `docs/validation_report.md`: 공식 실측 KPI와 한계
+- `artifacts/screening/canonical_public_kpis.json`: 정의·분모·출처·검증일
+- `docs/validation_report.md`: 공개 검증 범위와 재현 명령
+- `artifacts/ai_upgrade/README.md`: 제출 후 엔지니어링 자산의 범위 구분
 
 ## LLM 검증
 

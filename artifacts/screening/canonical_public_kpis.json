@@ -78,7 +78,7 @@
       "external-model A/B/C execution records",
       "human Claim-Citation semantic judgments"
     ],
-    "rule": "제출 후 엔지니어링 진단은 평가시점과 모집단이 달라 제출 KPI의 대체값 또는 재검증값으로 표시하지 않는다. 원시 파일은 artifacts/ai_upgrade에 보존한다."
+    "rule": "제출 후 엔지니어링 진단은 평가시점과 모집단이 달라 제출 KPI의 대체값 또는 재검증값으로 표시하지 않는다. 상세 진단 덤프는 공개 제품 문서가 아니며 재현 시 로컬 산출물로 관리한다."
   },
   "submitted_pdf": {
     "sha256": "ee6b9077507c0aabe37b0c13918fe513d69aac3cb71c6ce1bf2b80be1320010e",
