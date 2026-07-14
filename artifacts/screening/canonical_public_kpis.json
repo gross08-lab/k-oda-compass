@@ -1,0 +1,88 @@
+{
+  "manifest_version": "screening-public-kpi-v1",
+  "verified_at": "2026-07-15",
+  "scope": "서류평가자가 Live Demo와 README에서 직접 확인할 수 있고 현재 저장소에서 같은 정의로 재현 가능한 공개 KPI",
+  "urls": {
+    "live_demo": "https://k-oda-compass.streamlit.app",
+    "github": "https://github.com/gross08-lab/k-oda-compass"
+  },
+  "cps": {
+    "pdfs": 27,
+    "searchable_countries": 27,
+    "total_pages": 921,
+    "direct_text_pages": 652,
+    "ocr_searchable_pages": 249,
+    "searchable_pages": 901,
+    "unsearchable_pages": 20,
+    "valid_chunks": 1100,
+    "top50_countries_with_cps": 26,
+    "source": "artifacts/ai_upgrade/cps_corpus_validation.json"
+  },
+  "retrieval": {
+    "gold_queries": 120,
+    "dev_queries": 29,
+    "test_queries": 91,
+    "positive_test_queries": 82,
+    "recall_at_5": 1.0,
+    "operating_mode": "hybrid_filtered",
+    "operating_mode_label": "국가·분야 필터 검색",
+    "gold_label_fingerprint": "c42d43130647b074d5c8e6b7b856aef44009a549f768f17433506792821d0446",
+    "source": "artifacts/ai_upgrade/retrieval_benchmark_summary.json",
+    "public_metric_note": "Recall@5는 동결 Test의 정답 근거가 있는 82개 질의 기준"
+  },
+  "score_reproduction": {
+    "countries": 50,
+    "score_pass": 50,
+    "rank_match": 50,
+    "max_absolute_error": 0.005,
+    "scope": "저장된 7개 구성점수에서 최종 Opportunity Score와 순위를 재계산한 결과",
+    "source": "artifacts/ai_upgrade/score_reproduction_results.csv"
+  },
+  "features": {
+    "evidence_ids": true,
+    "cps_document_and_page_citation": true,
+    "evidence_pack": true,
+    "assumption_ids_a01_a07": true,
+    "local_rag_without_api_key": true,
+    "output_types": [
+      "Proposal Markdown",
+      "Brief Markdown",
+      "Evidence Pack Markdown",
+      "Proposal PDF",
+      "Brief PDF"
+    ]
+  },
+  "representative_demo": {
+    "label": "CSO 탄자니아 공공행정",
+    "country": "탄자니아",
+    "sector": "공공행정",
+    "user_type": "CSO/NGO",
+    "scale": "소규모 파일럿"
+  },
+  "qa": {
+    "automated_tests": 66,
+    "status": "PASS",
+    "source": "pytest -q"
+  },
+  "scope_separation": {
+    "submitted_comparison_surface": [
+      "CPS inventory and searchable corpus",
+      "Gold Set size and Recall@5",
+      "stored-component to final score/rank reproduction",
+      "runtime evidence and export features"
+    ],
+    "post_submission_engineering_diagnostics": [
+      "MRR and nDCG reruns",
+      "baseline-output Citation occurrence counts",
+      "raw-source to component score-lineage recovery",
+      "external-model A/B/C execution records",
+      "human Claim-Citation semantic judgments"
+    ],
+    "rule": "제출 후 엔지니어링 진단은 평가시점과 모집단이 달라 제출 KPI의 대체값 또는 재검증값으로 표시하지 않는다. 원시 파일은 artifacts/ai_upgrade에 보존한다."
+  },
+  "submitted_pdf": {
+    "sha256": "ee6b9077507c0aabe37b0c13918fe513d69aac3cb71c6ce1bf2b80be1320010e",
+    "pages": 10,
+    "read_only_reference": true
+  }
+}

@@ -77,6 +77,10 @@ def builder_artifacts() -> dict:
         "K-ODA Compass 근거 기반 AI 사업제안서",
         proposal_pdf_markdown,
     )
+    brief_pdf = app.markdown_to_pdf_bytes(
+        "K-ODA Compass 1-page Brief",
+        brief,
+    )
     return {
         "country": country,
         "sector": sector,
@@ -88,6 +92,7 @@ def builder_artifacts() -> dict:
         "evidence_pack": evidence_pack,
         "proposal_pdf_markdown": proposal_pdf_markdown,
         "proposal_pdf": proposal_pdf,
+        "brief_pdf": brief_pdf,
     }
 
 
@@ -210,6 +215,7 @@ def test_evidence_pack_has_traceability_metadata(builder_artifacts: dict) -> Non
 
 def test_pdf_is_generated_with_embedded_truetype_font(builder_artifacts: dict) -> None:
     proposal_pdf = builder_artifacts["proposal_pdf"]
+    brief_pdf = builder_artifacts["brief_pdf"]
 
     assert proposal_pdf is not None
     assert proposal_pdf.startswith(b"%PDF")
@@ -217,6 +223,9 @@ def test_pdf_is_generated_with_embedded_truetype_font(builder_artifacts: dict) -
     assert b"Helvetica" not in proposal_pdf
     assert len(proposal_pdf) > 50_000
     assert len(re.findall(rb"/Type\s*/Page(?!s)", proposal_pdf)) == 2
+    assert brief_pdf is not None
+    assert brief_pdf.startswith(b"%PDF")
+    assert b"/FontFile2" in brief_pdf
 
 
 def test_proposal_pdf_uses_balanced_two_page_summary(builder_artifacts: dict) -> None:

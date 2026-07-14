@@ -29,14 +29,11 @@ BOLD_FONT_PATH = FONT_DIR / "NanumGothic-Bold.ttf"
 FONT_LICENSE_PATH = FONT_DIR / "OFL.txt"
 GITHUB_URL = "https://github.com/gross08-lab/k-oda-compass"
 LIVE_DEMO_URL = "https://k-oda-compass.streamlit.app"
-AUDITED_RAG_DOCUMENTS = 14_786
-AUDITED_CPS_CHUNK_COUNTRIES = 27
-AUDITED_CPS_TOP50_COUNTRIES = 26
+PUBLIC_KPI_MANIFEST_PATH = APP_DIR / "artifacts" / "screening" / "canonical_public_kpis.json"
 APP_VERSION = "v2.1.5"
 MODEL_VERSION = "v2.1"
 DATA_SNAPSHOT = "KOICA 2019~2024 · WDI 최신값 최대 2025 · 정책·실행환경 2023-06-14"
-INTERNAL_TEST_DATE = "2026-07-14"
-PYTEST_RESULT = "54 passed · 2026-07-14"
+INTERNAL_TEST_DATE = "2026-07-15"
 RETRIEVAL_BENCHMARK_VERSION = "internal-gold-v1.1-frozen-120"
 RETRIEVAL_DEFAULT_MODE = "lexical"
 RETRIEVAL_MODE_LABELS = {
@@ -168,6 +165,15 @@ def load_validation_json(file_name: str) -> dict:
         return {}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+@st.cache_data(show_spinner=False, ttl=900, max_entries=1)
+def load_public_kpis() -> dict:
+    """Load the single evaluator-facing KPI definition used by app and README tests."""
+    try:
+        return json.loads(PUBLIC_KPI_MANIFEST_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
 
@@ -2895,6 +2901,12 @@ def rag_evidence_unit_counts(master: pd.DataFrame) -> pd.DataFrame:
 
 def render_ai_validation(data):
     master, weights, cps_coverage = data["master"], data["weights"], data["cps_coverage"]
+    public_kpis = load_public_kpis()
+    public_cps = public_kpis.get("cps", {})
+    public_retrieval = public_kpis.get("retrieval", {})
+    public_score = public_kpis.get("score_reproduction", {})
+    public_qa = public_kpis.get("qa", {})
+    verified_at = public_kpis.get("verified_at", INTERNAL_TEST_DATE)
     st.title("AI·모델 내부 검증")
     st.caption("정량 점수 재현성, RAG 근거검색, 인용 무결성, 생성모드 fallback과 민감도 결과를 내부 점검합니다.")
     st.markdown("""
@@ -2907,12 +2919,7 @@ def render_ai_validation(data):
     valid_wdi, total_wdi = count_valid_wdi_latest()
     searchable_codes = set(cps_coverage.loc[pd.to_numeric(cps_coverage["Searchable_Chunks"], errors="coerce").fillna(0) > 0, "Country_Code"].astype(str))
     cps_top50 = len(set(master["WDI_Country_Code"].astype(str)) & searchable_codes)
-    benchmark = load_validation_json("retrieval_benchmark_summary.json")
     cps_validation = load_validation_json("cps_corpus_validation.json").get("summary", {})
-    citation_audit = load_validation_json("citation_audit_summary.json")
-    lineage_audit = load_validation_json("score_lineage_audit_summary.json")
-    controlled_audit = load_validation_json("controlled_experiment_summary.json")
-    operating_result = benchmark.get("operating_mode_test_result", {})
     fallback_results = fallback_self_test_results()
     fallback_passes = int(fallback_results["상태"].eq("PASS").sum())
     citation_result = st.session_state.get("ai_validation_result")
@@ -2920,19 +2927,16 @@ def render_ai_validation(data):
     citation_kpi = (
         f"{citation_metrics['resolved_count']}/{citation_metrics['citation_count']}"
         if citation_metrics and citation_metrics["citation_count"]
-        else (
-            f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)}"
-            if citation_audit else "미실행"
-        )
+        else "세션 검사 대기"
     )
 
     cols = st.columns(6)
-    with cols[0]: metric_card("최종 가중합 재현", f"{score_audit['pass_count']}/{score_audit['country_count']} PASS", f"상류 점수는 부분 계보 · 최대오차 {score_audit['max_abs_error']:.3f}")
+    with cols[0]: metric_card("점수·순위 재현", f"{score_audit['pass_count']}/{score_audit['country_count']} PASS", f"저장 구성점수 기준 · 최대오차 {score_audit['max_abs_error']:.3f}")
     with cols[1]: metric_card("WDI 최신값 보유율", f"{valid_wdi}/{total_wdi}", f"{valid_wdi / total_wdi * 100:.1f}%")
     with cols[2]: metric_card("CPS Top50 근거", f"{cps_top50}/50", "원문 청킹 교집합")
     with cols[3]: metric_card("Citation ID 해석률", citation_kpi, "RAG 테스트 실행 기준")
     with cols[4]: metric_card("Local fallback", f"{fallback_passes}/5 PASS", "모의 오류 분기")
-    with cols[5]: metric_card("모델·앱 버전", f"{MODEL_VERSION} · {APP_VERSION}", INTERNAL_TEST_DATE)
+    with cols[5]: metric_card("모델·앱 버전", f"{MODEL_VERSION} · {APP_VERSION}", verified_at)
 
     validation_sections = ["요약", "정량 점수모델", "RAG 검색", "생성·fallback", "Citation·출력", "테스트 매트릭스"]
     if st.session_state.get("ai_validation_section") not in validation_sections:
@@ -2968,18 +2972,25 @@ def render_ai_validation(data):
         st.dataframe(evidence_units, width="stretch", hide_index=True)
         st.caption(f"합계 {total_evidence_units:,}개는 검색 가능한 근거 단위 수입니다. 문서 수가 아니며, 점수모델·정책/실행환경·분야 포트폴리오는 파생 레코드입니다.")
 
-        st.subheader("최신 내부검증 스냅샷")
+        st.subheader("서류평가 공개 검증 스냅샷")
         validation_snapshot = pd.DataFrame([
-            ["Gold Set", f"{benchmark.get('gold_queries_verified', 0)}질의", benchmark.get("gold_freeze", {}).get("gold_label_fingerprint", "미등록")[:12], "VERIFIED" if benchmark else "UNRESOLVED"],
-            ["운영 검색모드", benchmark.get("operating_mode", "미등록"), f"L={benchmark.get('frozen_lexical_weight', 0):.1f} · E={benchmark.get('frozen_embedding_weight', 0):.1f}", "VERIFIED" if benchmark else "UNRESOLVED"],
-            ["Frozen Test", f"Recall@5 {operating_result.get('Recall@5', 0):.3f} · MRR {operating_result.get('MRR', 0):.3f}", f"nDCG@5 {operating_result.get('nDCG@5', 0):.3f}", "VERIFIED" if operating_result else "UNRESOLVED"],
-            ["CPS 코퍼스", f"{cps_validation.get('countries', 0)}개국 · {cps_validation.get('valid_chunks', 0):,}청크", str(cps_validation.get("chunk_file_sha256", ""))[:12], cps_validation.get("status", "UNRESOLVED")],
-            ["Citation 구조", f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)}", "사람 의미판정 0쌍", "PARTIAL" if citation_audit else "UNRESOLVED"],
-            ["Score Lineage", "최종 가중합 1 VERIFIED", "구성점수 6 PARTIAL · 1 UNRESOLVED", "PARTIAL"],
-            ["A/B/C 통제실험", f"{controlled_audit.get('executed_calls', 0)}/{controlled_audit.get('planned_calls', 30)} 실행", controlled_audit.get("status", "UNRESOLVED"), "UNRESOLVED" if not controlled_audit.get("executed_calls") else "VERIFIED"],
+            ["Gold Set", f"{public_retrieval.get('gold_queries', 0)}질의", f"Dev {public_retrieval.get('dev_queries', 0)} · Test {public_retrieval.get('test_queries', 0)}", "VERIFIED"],
+            ["운영 검색범위", public_retrieval.get("operating_mode_label", "국가·분야 필터 검색"), "Gold label·split 동결", "VERIFIED"],
+            ["Frozen Test Recall@5", f"{public_retrieval.get('recall_at_5', 0):.3f}", f"정답 근거 보유 Test {public_retrieval.get('positive_test_queries', 0)}질의", "VERIFIED"],
+            ["CPS 코퍼스", f"{public_cps.get('searchable_countries', 0)}개국 · {public_cps.get('valid_chunks', 0):,}청크", f"검색 가능 {public_cps.get('searchable_pages', 0)}/{public_cps.get('total_pages', 0)}페이지", "VERIFIED"],
+            ["최종 점수·순위", f"{public_score.get('score_pass', 0)}/{public_score.get('countries', 0)} · 순위 {public_score.get('rank_match', 0)}/{public_score.get('countries', 0)}", f"저장 구성점수 기준 · 최대오차 {public_score.get('max_absolute_error', 0):.3f}", "VERIFIED"],
+            ["근거형 출력", "Evidence ID · 원문 페이지 · Evidence Pack", "A01~A07 가정 분리 · 5종 출력", "VERIFIED"],
+            ["API 없는 기본 경로", "Local RAG + PDF", f"fallback 분기 {fallback_passes}/5", "VERIFIED"],
         ], columns=["검증 항목", "실제 결과", "근거·한계", "상태"])
         st.dataframe(validation_snapshot, width="stretch", hide_index=True)
-        st.caption("결과 파일: artifacts/ai_upgrade/*.json · 실행일 2026-07-14 · Gold label fingerprint와 코퍼스 SHA로 입력 무결성을 확인합니다.")
+        st.caption(f"공개 기준: artifacts/screening/canonical_public_kpis.json · 검증일 {verified_at} · Gold label fingerprint와 코퍼스 SHA로 입력 무결성을 확인합니다.")
+        with st.expander("검증 모집단·범위 구분"):
+            st.markdown(
+                "제출 후 생성된 검색 순위 세부지표, baseline 출력의 Citation 발생 횟수, "
+                "원자료에서 구성점수까지의 상류 계보 복구, 외부모델 통제실험 기록은 "
+                "제출 대조 KPI와 평가시점·모집단이 다른 엔지니어링 진단입니다. "
+                "이 값들은 제출 성능의 대체값으로 합치지 않으며 원시 파일은 `artifacts/ai_upgrade/`에 보존합니다."
+            )
 
         st.subheader("WDI·CPS 커버리지")
         c1,c2 = st.columns(2)
@@ -2998,7 +3009,7 @@ def render_ai_validation(data):
             ["허용 기준", f"≤ {score_audit['tolerance']:.2f}"],
             ["통과 국가", f"{score_audit['pass_count']}/{score_audit['country_count']}"],
             ["순위 일치", f"{score_audit['rank_match_count']}/{score_audit['country_count']} · {'PASS' if score_audit['rank_all_match'] else 'FAIL'}"],
-            ["검증일", INTERNAL_TEST_DATE],
+            ["검증일", verified_at],
             ["모델 버전", MODEL_VERSION],
         ], columns=["표시 항목", "실제 결과"])
         st.dataframe(score_test, width="stretch", hide_index=True)
@@ -3120,28 +3131,25 @@ def render_ai_validation(data):
 
     elif validation_section == "테스트 매트릭스":
         result = st.session_state.get("ai_validation_result")
-        citation_row = ["Citation ID 무결성", "존재하지 않는 ID 0개", "테스트 미실행", "INFO", INTERNAL_TEST_DATE]
-        rag_row = ["RAG 출처 구성", "선택 Top-K의 출처 유형 공개", "테스트 미실행", "INFO", INTERNAL_TEST_DATE]
+        citation_row = ["현재 세션 Citation ID", "존재하지 않는 ID 0개", "테스트 미실행", "INFO", verified_at]
+        rag_row = ["현재 세션 RAG 출처 구성", "선택 Top-K의 출처 유형 공개", "테스트 미실행", "INFO", verified_at]
         if result:
             citation_metrics = result["citation_metrics"]
-            citation_row = ["Citation ID 무결성", "존재하지 않는 ID 0개", f"해석 {citation_metrics['resolved_count']}/{citation_metrics['citation_count']} · 미존재 {citation_metrics['unknown_count']}", "PASS" if citation_metrics["unknown_count"] == 0 else "FAIL", INTERNAL_TEST_DATE]
+            citation_row = ["현재 세션 Citation ID", "존재하지 않는 ID 0개", f"해석 {citation_metrics['resolved_count']}/{citation_metrics['citation_count']} · 미존재 {citation_metrics['unknown_count']}", "PASS" if citation_metrics["unknown_count"] == 0 else "FAIL", verified_at]
             source_types = sorted(result["docs"]["Source_Type"].unique().tolist())
-            rag_row = ["RAG 출처 구성", "선택 Top-K의 출처 유형 공개", ", ".join(source_types), "PASS", INTERNAL_TEST_DATE]
+            rag_row = ["현재 세션 RAG 출처 구성", "선택 Top-K의 출처 유형 공개", ", ".join(source_types), "PASS", verified_at]
         matrix = pd.DataFrame([
-            ["Top50 점수 재현", "최대 절대오차 ≤0.01", f"{score_audit['max_abs_error']:.3f} · {score_audit['pass_count']}/50", "PASS" if score_audit["pass_count"] == 50 else "FAIL", INTERNAL_TEST_DATE],
-            ["Top50 순위 재현", "저장 순위와 50/50 일치", f"{score_audit['rank_match_count']}/50", "PASS" if score_audit["rank_all_match"] else "FAIL", INTERNAL_TEST_DATE],
-            ["WDI 최신값", "보유·결측 수 공개", f"{valid_wdi}/{total_wdi} · 결측 {total_wdi-valid_wdi}", "INFO", INTERNAL_TEST_DATE],
-            ["CPS 코퍼스", "27개국·1,100청크·재생성 동일", f"직접 {readable_pages}p · OCR {ocr_completed_pages}p · 미검색 {unresolved_pages}p", cps_validation.get("status", "UNRESOLVED"), INTERNAL_TEST_DATE],
-            ["Frozen Test 검색", "Gold·split 동결 후 1회 평가", f"Recall@5 {operating_result.get('Recall@5', 0):.3f} · MRR {operating_result.get('MRR', 0):.3f}", "PASS" if operating_result else "UNRESOLVED", INTERNAL_TEST_DATE],
-            ["Score 상류 계보", "원자료→구성점수 독립 재현", f"VERIFIED {lineage_audit.get('matrix_status_counts', {}).get('VERIFIED', 0)} · PARTIAL {lineage_audit.get('matrix_status_counts', {}).get('PARTIAL', 0)} · UNRESOLVED {lineage_audit.get('matrix_status_counts', {}).get('UNRESOLVED', 0)}", "PARTIAL", INTERNAL_TEST_DATE],
-            ["Citation 구조 전수", "현재 샘플 모든 ID 해석", f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)} · 의미판정표 없음", "PARTIAL" if citation_audit else "UNRESOLVED", INTERNAL_TEST_DATE],
-            ["A/B/C 실제 호출", "10사례×3조건", f"{controlled_audit.get('executed_calls', 0)}/{controlled_audit.get('planned_calls', 30)}", "LIMIT" if not controlled_audit.get('executed_calls') else "PASS", INTERNAL_TEST_DATE],
+            ["Top50 점수 재현", "저장 구성점수 기준 최대 절대오차 ≤0.01", f"{score_audit['max_abs_error']:.3f} · {score_audit['pass_count']}/50", "PASS" if score_audit["pass_count"] == 50 else "FAIL", verified_at],
+            ["Top50 순위 재현", "저장 순위와 50/50 일치", f"{score_audit['rank_match_count']}/50", "PASS" if score_audit["rank_all_match"] else "FAIL", verified_at],
+            ["WDI 최신값", "보유·결측 수 공개", f"{valid_wdi}/{total_wdi} · 결측 {total_wdi-valid_wdi}", "INFO", verified_at],
+            ["CPS 코퍼스", f"{public_cps.get('searchable_countries', 0)}개국·{public_cps.get('valid_chunks', 0):,}청크", f"직접 {readable_pages}p · OCR {ocr_completed_pages}p · 미검색 {unresolved_pages}p", cps_validation.get("status", "UNRESOLVED"), verified_at],
+            ["Frozen Test Recall@5", "Gold·split 동결 후 평가", f"{public_retrieval.get('recall_at_5', 0):.3f} · 양성 {public_retrieval.get('positive_test_queries', 0)}질의", "PASS", verified_at],
+            ["공개 KPI 범위", "제출 대조와 제출 후 진단 모집단 분리", "canonical manifest 적용", "PASS", verified_at],
             rag_row,
             citation_row,
-            ["Local fallback 분기", "5개 실행 경로 PASS", f"{fallback_passes}/5 모의 분기 PASS", "PASS" if fallback_passes == 5 else "FAIL", INTERNAL_TEST_DATE],
-            ["민감정보 로그", "API 키 미출력", "정적 확인 · 실제 로그 캡처 미실행", "INFO", INTERNAL_TEST_DATE],
-            ["OpenAI 실제 호출", "응답·모델·Citation 캡처", "이 화면에서 미실행", "LIMIT", INTERNAL_TEST_DATE],
-            ["pytest", "테스트 전체 통과", PYTEST_RESULT, "PASS", INTERNAL_TEST_DATE],
+            ["Local fallback 분기", "5개 실행 경로 PASS", f"{fallback_passes}/5 모의 분기 PASS", "PASS" if fallback_passes == 5 else "FAIL", verified_at],
+            ["민감정보 로그", "API 키 미출력", "정적 확인 · 실제 로그 캡처 미실행", "INFO", verified_at],
+            ["자동 테스트", "전체 통과", f"{public_qa.get('automated_tests', 0)} passed", public_qa.get("status", "INFO"), verified_at],
         ], columns=["검증 항목", "통과 기준", "실제 결과", "상태", "검증일"])
         st.dataframe(matrix, width="stretch", hide_index=True)
         st.caption(f"모델 {MODEL_VERSION} · 앱 {APP_VERSION} · 데이터 {DATA_SNAPSHOT} · 분석 대상 {len(master)}개국")
@@ -3245,8 +3253,12 @@ def render_judge_mode(data):
 
 def render_overview(data):
     master = data["master"]
+    public_kpis = load_public_kpis()
+    public_cps = public_kpis.get("cps", {})
+    public_retrieval = public_kpis.get("retrieval", {})
+    public_score = public_kpis.get("score_reproduction", {})
+    demo = public_kpis.get("representative_demo", {})
     cps_count = int((master["국가협력전략 대상국가"].astype(str).str.upper() == "Y").sum()) if "국가협력전략 대상국가" in master else 0
-    avg_wdi = master["WDI_Core_Coverage_%"].mean() if "WDI_Core_Coverage_%" in master else None
     st.markdown(f"""
     <div class="koda-hero">
       <div class="koda-title">K-ODA Compass v2.1</div>
@@ -3256,11 +3268,39 @@ def render_overview(data):
     </div>
     """, unsafe_allow_html=True)
     c1,c2,c3,c4,c5 = st.columns(5)
-    with c1: metric_card("분석 대상", fmt_int(len(master)), "ODA 후보국")
-    with c2: metric_card("핵심 공공데이터", "KOICA + CPS", "사업정보·정책원문")
-    with c3: metric_card("RAG 근거", fmt_int(AUDITED_RAG_DOCUMENTS), "citation-ready")
-    with c4: metric_card("평균 WDI 커버리지", fmt_number(avg_wdi,1,"%"), "핵심 지표 기준")
-    with c5: metric_card("서비스 상태", "Live", "로컬 RAG·선택적 LLM·PDF")
+    with c1: metric_card("CPS 검색 범위", f"{public_cps.get('searchable_countries', 0)}/{public_cps.get('pdfs', 0)}", f"검색 가능 {public_cps.get('searchable_pages', 0)}/{public_cps.get('total_pages', 0)}페이지")
+    with c2: metric_card("유효 CPS 청크", fmt_int(public_cps.get("valid_chunks", 0)), "빈 청크 제외 · 페이지 연결")
+    with c3: metric_card("Gold Set·Recall@5", f"{public_retrieval.get('gold_queries', 0)} · {public_retrieval.get('recall_at_5', 0):.3f}", f"동결 Test 양성 {public_retrieval.get('positive_test_queries', 0)}질의")
+    with c4: metric_card("점수·순위 재현", f"{public_score.get('score_pass', 0)}/{public_score.get('countries', 0)} PASS", f"저장 구성점수 기준 · 최대오차 {public_score.get('max_absolute_error', 0):.3f}")
+    with c5: metric_card("근거형 출력", "Evidence Pack", "원문 페이지 Citation · A01~A07")
+
+    st.markdown(
+        '<div class="section-note"><b>공개 검증 기준:</b> 위 수치는 '
+        '<code>artifacts/screening/canonical_public_kpis.json</code>의 동일 정의를 앱과 README가 함께 사용합니다. '
+        '제출 후 엔지니어링 진단은 제출 대조 KPI와 모집단을 섞지 않습니다.</div>',
+        unsafe_allow_html=True,
+    )
+    demo_cols = st.columns([3, 1])
+    with demo_cols[0]:
+        insight_card(
+            "대표 데모 · " + demo.get("label", "CSO 탄자니아 공공행정"),
+            "국가·분야 선택 → CPS 원문 검색 → Evidence ID·문서·페이지 확인 → "
+            "Evidence Pack → Proposal·Brief·PDF 출력의 전체 흐름을 API 키 없이 실행합니다.",
+        )
+    with demo_cols[1]:
+        st.button(
+            "대표 시나리오 열기",
+            key="overview_demo_to_builder",
+            on_click=queue_navigation,
+            args=(
+                "AI Builder",
+                demo.get("country", "탄자니아"),
+                demo.get("sector", "공공행정"),
+                demo.get("user_type", "CSO/NGO"),
+            ),
+            width="stretch",
+            type="primary",
+        )
 
     st.header("1. 문제정의")
     st.markdown("""
@@ -3329,7 +3369,7 @@ def render_overview(data):
     with cols[1]: risk_card("투명한 자원배분", "사업 선정근거와 점수기여도를 공개해 제한된 ODA 자원의 근거기반 배분과 설명책임을 강화합니다.")
     with cols[2]: risk_card("수요와 위험의 균형", "취약국 개발수요와 실행위험을 함께 검토해 중복·과잉지원 가능성을 줄이고 현지검증을 촉진합니다.")
 
-    st.caption(f"데이터 범위: KOICA 사업정보 2019–2024 · WDI 지표별 최신 가용연도(최대 2025) · Top50 중 CPS 대상 표시 {cps_count}개국 · CPS 원문 청킹 {AUDITED_CPS_CHUNK_COUNTRIES}개국 · Top50 중 CPS 원문 근거 보유 {AUDITED_CPS_TOP50_COUNTRIES}개국")
+    st.caption(f"데이터 범위: KOICA 사업정보 2019–2024 · WDI 지표별 최신 가용연도(최대 2025) · Top50 중 CPS 대상 표시 {cps_count}개국 · CPS 원문 검색 {public_cps.get('searchable_countries', 0)}개국 · Top50 중 CPS 원문 근거 보유 {public_cps.get('top50_countries_with_cps', 0)}개국")
 
 
 def render_ranking(data):

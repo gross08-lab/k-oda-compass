@@ -1,0 +1,22 @@
+{
+  "checked_at": "2026-07-15",
+  "live_demo": {
+    "url": "https://k-oda-compass.streamlit.app",
+    "result": "PASS",
+    "observed": "로그인 없이 Streamlit 앱 첫 화면이 렌더링되고 9개 상위 메뉴가 표시됨",
+    "method": "in-app browser cold navigation and rendered screenshot inspection"
+  },
+  "github": {
+    "url": "https://github.com/gross08-lab/k-oda-compass",
+    "result": "PASS",
+    "observed": "공개 저장소와 main 브랜치 파일 목록 및 README가 로그인 없이 표시됨",
+    "method": "in-app browser DOM inspection"
+  },
+  "submitted_pdf_qr": {
+    "result": "PASS_VISIBLE_PAYLOAD",
+    "observed": "10페이지의 LIVE DEMO와 OPEN REPOSITORY QR 옆에 실제 URL이 명시되고 QR 이미지가 정상 렌더링됨",
+    "live_payload": "https://k-oda-compass.streamlit.app",
+    "github_payload": "https://github.com/gross08-lab/k-oda-compass",
+    "limitation": "이 실행에서는 QR 이미지를 별도 디코더로 재해석하지 않고, 제출 PDF의 표시 URL·QR 렌더와 실제 목적지 응답을 교차 확인함"
+  }
+}

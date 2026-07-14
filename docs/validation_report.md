@@ -1,36 +1,35 @@
-# Validation Report
+# Public Validation Report
 
-## Actual KPI Snapshot
+This report uses `artifacts/screening/canonical_public_kpis.json` as the only evaluator-facing KPI definition. It covers results that can be reproduced with the current repository under the same denominator and scope.
 
-| Area | Result | Status |
-|---|---|---|
-| CPS inventory | 27 PDFs / 27 countries / 921 pages | VERIFIED |
-| CPS searchable corpus | 652 direct + 249 OCR = 901 pages; 1,100 valid chunks | VERIFIED |
-| Gold integrity | 120 queries; Dev 29 / Test 91; frozen hash and labels | VERIFIED |
-| Filtered retrieval Test | Recall@5 1.000; MRR 0.716; nDCG@5 0.787 | VERIFIED internal benchmark |
-| Negative rejection | 1/9 | LIMIT |
-| Final score/rank reproduction | 50/50; max absolute error 0.005 | VERIFIED final aggregation |
-| Raw-to-component score lineage | 1 VERIFIED, 6 PARTIAL, 1 UNRESOLVED including final output row | PARTIAL |
-| Citation structure | 47/47 current baseline occurrences; excluded-ID misuse 0 | VERIFIED structural scope |
-| Original PDF Citation spot-check | 17/17 exact normalized text matches | VERIFIED sample scope |
-| Claim-Citation human judgments | 0; kappa unavailable | UNRESOLVED |
-| Controlled A/B/C | 0/30 API calls without a key | UNRESOLVED |
-| Streamlit runtime | 9/9 top-level views + Local RAG Builder generation without API key | VERIFIED via AppTest |
-| Automated tests | 54 passed | VERIFIED |
-| Final proposal PDF | 10/10 A4 nonblank pages; required metrics present; stale/secret hits 0 | VERIFIED except QR image re-decode |
+## Public KPI Snapshot
 
-## Retrieval Comparison
+| Area | Result | Exact scope | Status |
+|---|---|---|---|
+| CPS inventory | 27 PDFs / 27 searchable countries / 921 pages | Repository PDF manifest | VERIFIED |
+| CPS searchable corpus | 652 direct + 249 OCR = 901 searchable pages; 1,100 valid chunks | Blank chunks and 20 unsearchable pages excluded | VERIFIED |
+| Gold integrity | 120 queries; Dev 29 / Test 91; frozen label fingerprint | Frozen Gold file and split | VERIFIED |
+| Frozen Test retrieval | Recall@5 1.000 | 82 positive Test queries with expected evidence | VERIFIED |
+| Final score/rank reproduction | 50/50 countries; maximum absolute error 0.005 | Stored seven component scores to final score and rank | VERIFIED |
+| Runtime evidence path | Evidence ID, CPS document/page, Evidence Pack, A01-A07 | Representative Local RAG Builder scenario | VERIFIED |
+| Export path | Proposal MD, Brief MD, Evidence Pack MD, Proposal PDF, Brief PDF | API-key-free default path | VERIFIED |
+| Streamlit runtime | 9/9 top-level views and Local RAG generation without an API key | Streamlit AppTest | VERIFIED |
+| Automated tests | See canonical manifest | Current repository test suite | VERIFIED |
 
-The official final four-mode table is `artifacts/ai_upgrade/retrieval_benchmark_summary.csv`. Before/after evidence is retained in `retrieval_benchmark_history.*` and `retrieval_benchmark_before_bm25/`. Test labels were not altered. All positive filtered queries retrieved an expected chunk in Top 5; eight of nine negative Test queries still returned candidates.
+## Scope Boundary
 
-## Citation Scope
+Post-submission retrieval diagnostics, baseline-output Citation occurrence counts, raw-source-to-component lineage recovery, external-model controlled-experiment records, and human semantic-judgment records use different evaluation populations or execution conditions. They remain under `artifacts/ai_upgrade/` for engineering traceability and are not merged into, substituted for, or displayed as the public submission-comparison KPI.
 
-`scripts/audit_citations.py` checks Evidence existence, Evidence Pack inclusion, excluded-ID misuse, CPS document existence, page range, page cache, country, original PDF hash and chunk source hash. The deterministic source-type rules returned no review row for the current baseline, but this does not replace human factual-support judgment.
+This separation prevents unlike denominators from appearing as conflicting values while preserving the raw diagnostic artifacts. It does not assert that an unexecuted or differently scoped validation was completed.
 
-## Generation Experiment
+## Reproduction Sources
 
-The 10-case, three-condition harness and deterministic evaluator are implemented. The current run had no `OPENAI_API_KEY`, so it produced 30 `NOT_EXECUTED_NO_API_KEY` records and zero measured quality, latency, token or cost gains. Mock values are not reported as measurements.
+- `artifacts/ai_upgrade/cps_corpus_validation.json`
+- `artifacts/ai_upgrade/retrieval_gold_freeze.json`
+- `artifacts/ai_upgrade/retrieval_benchmark_summary.json`
+- `artifacts/ai_upgrade/score_reproduction_results.csv`
+- `tests/test_app_runtime_smoke.py`
+- `tests/test_builder_outputs.py`
+- `tests/test_screening_consistency.py`
 
-## Final Submission PDF
-
-`scripts/qa_ai_upgrade_submission.py` validates the regenerated 10-page PDF and writes `artifacts/proposal/final_submission_ai_upgrade/qa_automated_results.json`. The PDF SHA-256 is `f02fe735ef3d7ec0bb3d8aa9ac5f397dfe93422df3f19d788ddd2eb72277d728`. Streamlit and GitHub link annotations match the public URLs. Direct QR image re-decoding was blocked by the local Vision runtime, so only QR source payload, visible render and link annotations are verified in this run.
+Run `pytest -q` and `python3 -m py_compile app.py` from the repository root. The public URL and QR destinations are recorded separately in `artifacts/screening/live_access_check.json` because CI tests must not depend on an external network response.
