@@ -1,22 +1,24 @@
 {
-  "pdf": "KODA_Compass_Proposal_FINAL_SUBMISSION_AI_UPGRADE.pdf",
-  "bytes": 7714262,
+  "validation_date": "2026-07-14",
+  "pdf": "KODA_Compass_Proposal_FINAL_SUBMISSION_1800.pdf",
+  "bytes": 2133403,
+  "sha256": "f02fe735ef3d7ec0bb3d8aa9ac5f397dfe93422df3f19d788ddd2eb72277d728",
   "pages": 10,
   "page_sizes": [
     [
-      595.3,
+      595.28,
       841.89
     ],
     [
-      595.3,
+      595.28,
       841.89
     ],
     [
-      595.3,
+      595.28,
       841.89
     ],
     [
-      595.3,
+      595.28,
       841.89
     ],
     [
@@ -46,16 +48,16 @@
   ],
   "all_a4": true,
   "page_text_characters": [
-    1162,
-    1194,
-    1364,
-    1751,
-    161,
-    43,
-    1562,
-    1709,
-    1533,
-    1643
+    880,
+    966,
+    1056,
+    1243,
+    479,
+    522,
+    1089,
+    1135,
+    1077,
+    955
   ],
   "rendered_pages": 10,
   "rendered_nonblank": true,
@@ -71,7 +73,7 @@
     {
       "file": "page-02.png",
       "extrema": [
-        0,
+        52,
         255
       ],
       "nonblank": true
@@ -79,7 +81,7 @@
     {
       "file": "page-03.png",
       "extrema": [
-        31,
+        52,
         255
       ],
       "nonblank": true
@@ -87,7 +89,7 @@
     {
       "file": "page-04.png",
       "extrema": [
-        31,
+        52,
         255
       ],
       "nonblank": true
@@ -148,5 +150,17 @@
   "live_demo_link_present": true,
   "github_link_present": true,
   "forbidden_hits": {},
-  "secret_hits": []
+  "required_hits": {
+    "1,100개": 2,
+    "26/50": 1,
+    "29 / 91": 1,
+    "54 PASS": 1,
+    "47 / 47": 1,
+    "17 / 17": 1,
+    "11.59ms": 2,
+    "0.716": 1
+  },
+  "required_metrics_present": true,
+  "secret_hits": [],
+  "qr_image_decode": "BLOCKED_BY_ENVIRONMENT"
 }

@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import os
 import csv
+import json
 import hashlib
 from pathlib import Path
 from typing import List, Dict
@@ -28,15 +29,15 @@ BOLD_FONT_PATH = FONT_DIR / "NanumGothic-Bold.ttf"
 FONT_LICENSE_PATH = FONT_DIR / "OFL.txt"
 GITHUB_URL = "https://github.com/gross08-lab/k-oda-compass"
 LIVE_DEMO_URL = "https://k-oda-compass.streamlit.app"
-AUDITED_RAG_DOCUMENTS = 14_492
-AUDITED_CPS_CHUNK_COUNTRIES = 20
-AUDITED_CPS_TOP50_COUNTRIES = 19
+AUDITED_RAG_DOCUMENTS = 14_786
+AUDITED_CPS_CHUNK_COUNTRIES = 27
+AUDITED_CPS_TOP50_COUNTRIES = 26
 APP_VERSION = "v2.1.5"
 MODEL_VERSION = "v2.1"
 DATA_SNAPSHOT = "KOICA 2019~2024 · WDI 최신값 최대 2025 · 정책·실행환경 2023-06-14"
-INTERNAL_TEST_DATE = "2026-07-11"
-PYTEST_RESULT = "38 passed"
-RETRIEVAL_BENCHMARK_VERSION = "internal-gold-v1"
+INTERNAL_TEST_DATE = "2026-07-14"
+PYTEST_RESULT = "54 passed · 2026-07-14"
+RETRIEVAL_BENCHMARK_VERSION = "internal-gold-v1.1-frozen-120"
 RETRIEVAL_DEFAULT_MODE = "lexical"
 RETRIEVAL_MODE_LABELS = {
     "lexical": "Lexical (운영 기본)",
@@ -157,6 +158,18 @@ def count_valid_wdi_latest() -> tuple[int, int]:
             if value not in {"", "nan", "none", "n/a"}:
                 valid += 1
     return valid, total
+
+
+@st.cache_data(show_spinner=False, ttl=900, max_entries=1)
+def load_validation_json(file_name: str) -> dict:
+    """Load a small validation artifact only inside an audit view."""
+    path = APP_DIR / "artifacts" / "ai_upgrade" / file_name
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def load_all_data() -> dict[str, pd.DataFrame]:
@@ -612,7 +625,7 @@ def build_rag_corpus(master: pd.DataFrame, wdi: pd.DataFrame, projects: pd.DataF
             "Page": fmt_year(r.get("Page")),
             "Extraction_Method": safe_text(r.get("Extraction_Method")),
             "Model_Role": "CPS 정책원문 페이지 근거",
-            "Limitations": "OCR 미완료 가능성과 문서 최신성 확인 필요",
+            "Limitations": "OCR 오인식 가능성과 문서 최신성 확인 필요",
         })
 
     return pd.DataFrame(rows)
@@ -2892,19 +2905,29 @@ def render_ai_validation(data):
     row = get_country_row(master, country)
     score_audit = score_model_reproducibility(master, weights)
     valid_wdi, total_wdi = count_valid_wdi_latest()
-    readable_codes = set(cps_coverage.loc[pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0) > 0, "Country_Code"].astype(str))
-    cps_top50 = len(set(master["WDI_Country_Code"].astype(str)) & readable_codes)
+    searchable_codes = set(cps_coverage.loc[pd.to_numeric(cps_coverage["Searchable_Chunks"], errors="coerce").fillna(0) > 0, "Country_Code"].astype(str))
+    cps_top50 = len(set(master["WDI_Country_Code"].astype(str)) & searchable_codes)
+    benchmark = load_validation_json("retrieval_benchmark_summary.json")
+    cps_validation = load_validation_json("cps_corpus_validation.json").get("summary", {})
+    citation_audit = load_validation_json("citation_audit_summary.json")
+    lineage_audit = load_validation_json("score_lineage_audit_summary.json")
+    controlled_audit = load_validation_json("controlled_experiment_summary.json")
+    operating_result = benchmark.get("operating_mode_test_result", {})
     fallback_results = fallback_self_test_results()
     fallback_passes = int(fallback_results["상태"].eq("PASS").sum())
     citation_result = st.session_state.get("ai_validation_result")
     citation_metrics = citation_result.get("citation_metrics") if citation_result else None
     citation_kpi = (
         f"{citation_metrics['resolved_count']}/{citation_metrics['citation_count']}"
-        if citation_metrics and citation_metrics["citation_count"] else "미실행"
+        if citation_metrics and citation_metrics["citation_count"]
+        else (
+            f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)}"
+            if citation_audit else "미실행"
+        )
     )
 
     cols = st.columns(6)
-    with cols[0]: metric_card("점수 재현성", f"{score_audit['pass_count']}/{score_audit['country_count']} PASS", f"최대오차 {score_audit['max_abs_error']:.3f}")
+    with cols[0]: metric_card("최종 가중합 재현", f"{score_audit['pass_count']}/{score_audit['country_count']} PASS", f"상류 점수는 부분 계보 · 최대오차 {score_audit['max_abs_error']:.3f}")
     with cols[1]: metric_card("WDI 최신값 보유율", f"{valid_wdi}/{total_wdi}", f"{valid_wdi / total_wdi * 100:.1f}%")
     with cols[2]: metric_card("CPS Top50 근거", f"{cps_top50}/50", "원문 청킹 교집합")
     with cols[3]: metric_card("Citation ID 해석률", citation_kpi, "RAG 테스트 실행 기준")
@@ -2925,11 +2948,11 @@ def render_ai_validation(data):
     evidence_units = rag_evidence_unit_counts(master)
     total_evidence_units = int(evidence_units["근거 단위 수"].sum())
     total_pages = int(pd.to_numeric(cps_coverage["Pages"], errors="coerce").fillna(0).sum())
-    readable_pages = int(pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0).sum())
-    ocr_target_pages = int(pd.to_numeric(cps_coverage["OCR_Target_Pages"], errors="coerce").fillna(0).sum())
-    image_only = int((pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0) == 0).sum())
+    readable_pages = int(pd.to_numeric(cps_coverage.get("Direct_Extracted_Pages", cps_coverage["Readable_Pages"]), errors="coerce").fillna(0).sum())
+    ocr_completed_pages = int(pd.to_numeric(cps_coverage.get("OCR_Completed_Pages", 0), errors="coerce").fillna(0).sum())
+    unresolved_pages = int(pd.to_numeric(cps_coverage.get("Unsearchable_Pages", 0), errors="coerce").fillna(0).sum())
     cps_chunks = int(evidence_units.loc[evidence_units["근거 유형"] == "CPS RAG 청크", "근거 단위 수"].iloc[0])
-    cps_processed = int(len(readable_codes))
+    cps_processed = int(len(searchable_codes))
 
     if validation_section == "요약":
         st.subheader("검증 대상")
@@ -2945,13 +2968,26 @@ def render_ai_validation(data):
         st.dataframe(evidence_units, width="stretch", hide_index=True)
         st.caption(f"합계 {total_evidence_units:,}개는 검색 가능한 근거 단위 수입니다. 문서 수가 아니며, 점수모델·정책/실행환경·분야 포트폴리오는 파생 레코드입니다.")
 
+        st.subheader("최신 내부검증 스냅샷")
+        validation_snapshot = pd.DataFrame([
+            ["Gold Set", f"{benchmark.get('gold_queries_verified', 0)}질의", benchmark.get("gold_freeze", {}).get("gold_label_fingerprint", "미등록")[:12], "VERIFIED" if benchmark else "UNRESOLVED"],
+            ["운영 검색모드", benchmark.get("operating_mode", "미등록"), f"L={benchmark.get('frozen_lexical_weight', 0):.1f} · E={benchmark.get('frozen_embedding_weight', 0):.1f}", "VERIFIED" if benchmark else "UNRESOLVED"],
+            ["Frozen Test", f"Recall@5 {operating_result.get('Recall@5', 0):.3f} · MRR {operating_result.get('MRR', 0):.3f}", f"nDCG@5 {operating_result.get('nDCG@5', 0):.3f}", "VERIFIED" if operating_result else "UNRESOLVED"],
+            ["CPS 코퍼스", f"{cps_validation.get('countries', 0)}개국 · {cps_validation.get('valid_chunks', 0):,}청크", str(cps_validation.get("chunk_file_sha256", ""))[:12], cps_validation.get("status", "UNRESOLVED")],
+            ["Citation 구조", f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)}", "사람 의미판정 0쌍", "PARTIAL" if citation_audit else "UNRESOLVED"],
+            ["Score Lineage", "최종 가중합 1 VERIFIED", "구성점수 6 PARTIAL · 1 UNRESOLVED", "PARTIAL"],
+            ["A/B/C 통제실험", f"{controlled_audit.get('executed_calls', 0)}/{controlled_audit.get('planned_calls', 30)} 실행", controlled_audit.get("status", "UNRESOLVED"), "UNRESOLVED" if not controlled_audit.get("executed_calls") else "VERIFIED"],
+        ], columns=["검증 항목", "실제 결과", "근거·한계", "상태"])
+        st.dataframe(validation_snapshot, width="stretch", hide_index=True)
+        st.caption("결과 파일: artifacts/ai_upgrade/*.json · 실행일 2026-07-14 · Gold label fingerprint와 코퍼스 SHA로 입력 무결성을 확인합니다.")
+
         st.subheader("WDI·CPS 커버리지")
         c1,c2 = st.columns(2)
         with c1:
             insight_card("WDI 최신값 레코드", f"{valid_wdi}/{total_wdi} · 50개국×10지표 · {valid_wdi / total_wdi * 100:.1f}%<br>결측 {total_wdi - valid_wdi}건은 RAG 근거 생성에서 제외하고 화면에는 최신값 없음으로 표시합니다. 0으로 대체하지 않습니다.")
         with c2:
-            insight_card("CPS 페이지·청크", f"전체 {total_pages}페이지 · 직접 추출 {readable_pages}페이지 · OCR 보강 대상 {ocr_target_pages}페이지<br>이미지 중심 PDF {image_only}개 · CPS RAG 청크 {cps_chunks}개 · 처리국 {cps_processed}개 · Top50 근거 {cps_top50}/50")
-        st.warning("OCR 보강 대상 258페이지는 OCR 완료 페이지가 아닙니다. 현재 청크는 직접 읽을 수 있는 텍스트 레이어 중심입니다.")
+            insight_card("CPS 페이지·청크", f"전체 {total_pages}페이지 · 직접 추출 {readable_pages}페이지 · OCR 검색 {ocr_completed_pages}페이지<br>미검색 {unresolved_pages}페이지 · CPS RAG 청크 {cps_chunks}개 · 처리국 {cps_processed}개 · Top50 근거 {cps_top50}/50")
+        st.info("직접 추출과 OCR 검색 페이지는 최종 page cache의 Extraction_Method 기준입니다. 미검색 페이지는 근거로 사용하지 않습니다.")
 
     elif validation_section == "정량 점수모델":
         st.subheader("Top50 점수·순위 재현성")
@@ -3095,7 +3131,11 @@ def render_ai_validation(data):
             ["Top50 점수 재현", "최대 절대오차 ≤0.01", f"{score_audit['max_abs_error']:.3f} · {score_audit['pass_count']}/50", "PASS" if score_audit["pass_count"] == 50 else "FAIL", INTERNAL_TEST_DATE],
             ["Top50 순위 재현", "저장 순위와 50/50 일치", f"{score_audit['rank_match_count']}/50", "PASS" if score_audit["rank_all_match"] else "FAIL", INTERNAL_TEST_DATE],
             ["WDI 최신값", "보유·결측 수 공개", f"{valid_wdi}/{total_wdi} · 결측 {total_wdi-valid_wdi}", "INFO", INTERNAL_TEST_DATE],
-            ["CPS OCR", "OCR 대상과 완료를 구분", f"직접 {readable_pages}p · 대상 {ocr_target_pages}p", "LIMIT", INTERNAL_TEST_DATE],
+            ["CPS 코퍼스", "27개국·1,100청크·재생성 동일", f"직접 {readable_pages}p · OCR {ocr_completed_pages}p · 미검색 {unresolved_pages}p", cps_validation.get("status", "UNRESOLVED"), INTERNAL_TEST_DATE],
+            ["Frozen Test 검색", "Gold·split 동결 후 1회 평가", f"Recall@5 {operating_result.get('Recall@5', 0):.3f} · MRR {operating_result.get('MRR', 0):.3f}", "PASS" if operating_result else "UNRESOLVED", INTERNAL_TEST_DATE],
+            ["Score 상류 계보", "원자료→구성점수 독립 재현", f"VERIFIED {lineage_audit.get('matrix_status_counts', {}).get('VERIFIED', 0)} · PARTIAL {lineage_audit.get('matrix_status_counts', {}).get('PARTIAL', 0)} · UNRESOLVED {lineage_audit.get('matrix_status_counts', {}).get('UNRESOLVED', 0)}", "PARTIAL", INTERNAL_TEST_DATE],
+            ["Citation 구조 전수", "현재 샘플 모든 ID 해석", f"{citation_audit.get('citation_occurrences_resolved', 0)}/{citation_audit.get('citation_occurrences', 0)} · 의미판정표 없음", "PARTIAL" if citation_audit else "UNRESOLVED", INTERNAL_TEST_DATE],
+            ["A/B/C 실제 호출", "10사례×3조건", f"{controlled_audit.get('executed_calls', 0)}/{controlled_audit.get('planned_calls', 30)}", "LIMIT" if not controlled_audit.get('executed_calls') else "PASS", INTERNAL_TEST_DATE],
             rag_row,
             citation_row,
             ["Local fallback 분기", "5개 실행 경로 PASS", f"{fallback_passes}/5 모의 분기 PASS", "PASS" if fallback_passes == 5 else "FAIL", INTERNAL_TEST_DATE],
@@ -4041,7 +4081,7 @@ def render_evidence(data):
     evidence_row = get_country_row(master, evidence_country)
     country_code = safe_text(evidence_row.get("WDI_Country_Code"))
     coverage_rows = cps_coverage.loc[cps_coverage["Country_Code"] == country_code]
-    has_cps_text = not coverage_rows.empty and float(coverage_rows.iloc[0].get("Readable_Pages", 0) or 0) > 0
+    has_cps_text = not coverage_rows.empty and float(coverage_rows.iloc[0].get("Searchable_Chunks", 0) or 0) > 0
     wdi_core_missing = pd.to_numeric(pd.Series([evidence_row.get("WDI_Core_Missing_Count")]), errors="coerce").iloc[0]
     wdi_core_available = 7 - int(wdi_core_missing) if pd.notna(wdi_core_missing) else 0
 
@@ -4068,10 +4108,10 @@ def render_evidence(data):
 
     cps_target_count = int(master["국가협력전략 대상국가"].astype(str).str.upper().eq("Y").sum())
     office_country_count = int(master["한국국제협력단 사무소 주재 여부"].astype(str).str.upper().eq("Y").sum())
-    readable_coverage = cps_coverage.loc[pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0) > 0]
-    cps_chunk_country_count = int(readable_coverage["Country_Code"].nunique())
-    cps_top50_evidence = len(set(master["WDI_Country_Code"].astype(str)) & set(readable_coverage["Country_Code"].astype(str)))
-    image_only_count = int((pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0) == 0).sum())
+    searchable_coverage = cps_coverage.loc[pd.to_numeric(cps_coverage["Searchable_Chunks"], errors="coerce").fillna(0) > 0]
+    cps_chunk_country_count = int(searchable_coverage["Country_Code"].nunique())
+    cps_top50_evidence = len(set(master["WDI_Country_Code"].astype(str)) & set(searchable_coverage["Country_Code"].astype(str)))
+    image_centered_count = int((pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0) == 0).sum())
 
     wdi_expected = len(master) * 7
     wdi_observed = wdi_expected - int(pd.to_numeric(master["WDI_Core_Missing_Count"], errors="coerce").fillna(7).sum())
@@ -4107,7 +4147,7 @@ def render_evidence(data):
         with c3: metric_card("PDF/RAG 처리 국가", f"{cps_chunk_country_count}개국", "읽기 가능한 원문")
         with c4: metric_card("Top50 CPS 근거", f"{cps_top50_evidence}/50", "국가코드 교차")
         with c5: metric_card("CPS RAG 청크", f"{record_counts['cps_pdf']}개", "페이지 단위 청크")
-        st.caption(f"26은 CPS 대상 표시의 수, 20은 실제 검색 가능한 원문 국가 수, 19/50은 Top50과 원문 국가의 교집합입니다. 서로 다른 모집단입니다. 이미지형 PDF {image_only_count}/{len(cps_coverage)}개는 직접근거로 계산하지 않습니다.")
+        st.caption(f"26은 마스터의 CPS 대상 표시 수, {cps_chunk_country_count}은 실제 검색 가능한 원문 국가 수, {cps_top50_evidence}/50은 Top50과 원문 국가의 교집합입니다. PDF 인벤토리에는 Top50 밖의 인도(IND)가 포함됩니다. 이미지 중심 PDF {image_centered_count}/{len(cps_coverage)}개도 OCR 청크가 있을 때만 근거로 사용합니다.")
 
         st.subheader("커버리지 산식")
         c1,c2,c3,c4 = st.columns(4)
@@ -4123,7 +4163,7 @@ def render_evidence(data):
             if st.checkbox("상세 메타데이터 표시", value=False, key="evidence_inventory_detail"):
                 inventory = pd.DataFrame([
                     ["A", "KOICA", DATA_FILES["projects"], "2019~2024", "수집일 메타데이터 미포함", "사업 레코드·금액 raw", f"{record_counts['projects']:,}행", "국가·연도·분야·CSV 행", "협력경험·RAG", "https://www.data.go.kr/", "고유 사업 ID 없음·금액 단위 재확인 필요"],
-                    ["A", "대한민국 ODA/CPS", DATA_FILES["cps_pdf"], "문서별 상이", "문서 버전은 원문 1페이지", "페이지·청크", f"{record_counts['cps_pdf']:,}청크·{cps_chunk_country_count}개국", "국가코드·페이지·청크 ID", "정책원문 인용", "https://www.odakorea.go.kr/", f"27 PDF 중 이미지형 {image_only_count}개 OCR 필요"],
+                    ["A", "대한민국 ODA/CPS", DATA_FILES["cps_pdf"], "문서별 상이", "문서 버전은 원문 1페이지", "페이지·청크", f"{record_counts['cps_pdf']:,}청크·{cps_chunk_country_count}개국", "국가코드·페이지·청크 ID", "정책원문 인용", "https://www.odakorea.go.kr/", f"27 PDF · 이미지 중심 {image_centered_count}개 포함 · OCR 검색 적용"],
                     ["B", "World Bank", DATA_FILES["wdi"], "2019~2025 창의 최신값", "추출일 메타데이터 미포함", "지표별 단위", f"{record_counts['wdi']:,}행", "국가코드·지표코드", "개발수요 보조", "https://databank.worldbank.org/source/world-development-indicators-", f"핵심 최신값 {wdi_observed}/{wdi_expected}"],
                     ["B", "KOICA 협력국 통합 개발지표", DATA_FILES["policy_risk"], "공개자료 기준", "2023-06-14", "원지표·0~100 정규화", f"{record_counts['policy_risk']:,}행", "국가명", "정책·실행환경 보조", "https://www.data.go.kr/", f"원자료 5종 {risk_raw_observed}/{risk_raw_expected}"],
                     ["C", "K-ODA Compass", DATA_FILES["master"], "통합 스냅샷", MODEL_VERSION, "0~100 원점수", f"{len(master):,}행", "국가코드·순위", "파생점수", GITHUB_URL, "점수 생성 스크립트 미포함"],
@@ -4184,7 +4224,7 @@ def render_evidence(data):
                 st.dataframe(cps_display.rename(columns={"PDF_File":"문서 파일", "Page":"페이지", "Chunk_ID":"청크 ID", "Sector_Tag":"관련 분야", "Citation":"원문 위치", "Text":"관련 문장"}), width="stretch", hide_index=True)
                 st.download_button("선택 국가 CPS 청크 CSV", evidence_cps.to_csv(index=False).encode("utf-8-sig"), f"KODA_{country_code}_CPS_chunks.csv", "text/csv", width="stretch")
             else:
-                st.caption("체크할 때만 806개 CPS 청크 파일을 로드합니다.")
+                st.caption("체크할 때만 1,100개 CPS 청크 파일을 로드합니다.")
 
         elif raw_source == "WDI":
             st.subheader(f"{evidence_country} World Bank WDI")
@@ -4244,11 +4284,12 @@ def render_evidence(data):
         """, unsafe_allow_html=True)
 
         total_pages = int(pd.to_numeric(cps_coverage["Pages"], errors="coerce").fillna(0).sum())
-        readable_pages = int(pd.to_numeric(cps_coverage["Readable_Pages"], errors="coerce").fillna(0).sum())
-        ocr_target_pages = int(pd.to_numeric(cps_coverage["OCR_Target_Pages"], errors="coerce").fillna(0).sum())
+        readable_pages = int(pd.to_numeric(cps_coverage.get("Direct_Extracted_Pages", cps_coverage["Readable_Pages"]), errors="coerce").fillna(0).sum())
+        ocr_completed_pages = int(pd.to_numeric(cps_coverage["OCR_Completed_Pages"], errors="coerce").fillna(0).sum())
+        unresolved_pages = int(pd.to_numeric(cps_coverage.get("Unsearchable_Pages", 0), errors="coerce").fillna(0).sum())
         st.subheader("한계와 완화방안")
         limitations = pd.DataFrame([
-            ["이미지형 CPS OCR 미완료", f"27개 PDF 중 {image_only_count}개는 읽기 가능한 페이지가 없어 직접근거 누락", f"OCR 대상 {ocr_target_pages}/{total_pages}페이지 재처리 후 청크 재생성"],
+            ["CPS 미검색 페이지", f"전체 {total_pages}페이지 중 {unresolved_pages}페이지는 최종 page cache에 없음", "원본 품질 확인 후 OCR 재처리·청크 재생성"],
             ["정책·실행환경 보조지표", "제도·파트너·집행역량을 완전히 설명하지 못함", "현지조사·기관 실사·조달환경 검증 병행"],
             ["금액 단위 불확실성", "약정·지출 raw 값을 통화로 오해할 수 있음", "공식 메타데이터 확정 전 raw value로만 표시"],
             ["현지수요 미검증", "데이터상 우선순위와 실제 수요가 다를 수 있음", "수혜자 인터뷰·파트너 검증·소규모 파일럿"],
@@ -4256,7 +4297,7 @@ def render_evidence(data):
             ["결측자료", f"WDI 핵심 {wdi_expected - wdi_observed}개, 실행환경 원자료 {risk_raw_expected - risk_raw_observed}개 결측", "결측을 화면에 노출하고 현지·공식 원자료로 보완"],
         ], columns=["한계", "예상 영향", "완화방안"])
         st.dataframe(limitations, width="stretch", hide_index=True)
-        st.caption(f"CPS OCR coverage: 읽기 가능 {readable_pages}/{total_pages}페이지 · OCR 대상 {ocr_target_pages}페이지 · 이미지형 PDF {image_only_count}/{len(cps_coverage)}개")
+        st.caption(f"CPS 검색 커버리지: 직접 추출 {readable_pages}페이지 · OCR 검색 {ocr_completed_pages}페이지 · 미검색 {unresolved_pages}페이지 · 이미지 중심 PDF {image_centered_count}/{len(cps_coverage)}개")
 
 
 def main():

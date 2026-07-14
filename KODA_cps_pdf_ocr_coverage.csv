@@ -1,28 +1,28 @@
-﻿Country_Code,Country_KR,PDF_File,Pages,Readable_Pages,OCR_Target_Pages,Readable_Page_Ratio,Extracted_Chars,Coverage_Status
-BGD,방글라데시,BGD.pdf,35,33,2,0.9429,22530,Partial text layer
-BOL,볼리비아,BOL.pdf,27,25,2,0.9259,21177,Partial text layer
-COL,콜롬비아,COL.pdf,32,0,32,0.0,0,Image-only - OCR required
-EGY,이집트,EGY.pdf,28,28,0,1.0,19040,Text layer OK
-ETH,에티오피아,ETH.pdf,30,28,2,0.9333,22540,Partial text layer
-GHA,가나,GHA.pdf,35,0,35,0.0,0,Image-only - OCR required
-IDN,인도네시아,IDN.pdf,38,36,2,0.9474,22023,Partial text layer
-IND,인도,IND.pdf,33,31,2,0.9394,22170,Partial text layer
-KGZ,키르기스스탄,KGZ.pdf,33,32,1,0.9697,23451,Partial text layer
-KHM,캄보디아,KHM.pdf,31,0,31,0.0,0,Image-only - OCR required
-LAO,라오스,LAO.pdf,29,27,2,0.931,20315,Partial text layer
-LKA,스리랑카,LKA.pdf,40,40,0,1.0,28667,Text layer OK
-MMR,미얀마,MMR.pdf,35,0,35,0.0,0,Image-only - OCR required
-MNG,몽골,MNG.pdf,40,0,40,0.0,0,Image-only - OCR required
-NPL,네팔,NPL.pdf,48,47,1,0.9792,32283,Partial text layer
-PAK,파키스탄,PAK.pdf,30,0,30,0.0,0,Image-only - OCR required
-PER,페루,PER.pdf,30,28,2,0.9333,21778,Partial text layer
-PHL,필리핀,PHL.pdf,34,32,2,0.9412,28058,Partial text layer
-PRY,파라과이,PRY.pdf,27,0,27,0.0,0,Image-only - OCR required
-RWA,르완다,RWA.pdf,47,45,2,0.9574,33025,Partial text layer
-SEN,세네갈,SEN.pdf,47,47,0,1.0,34280,Text layer OK
-TJK,타지키스탄,TJK.pdf,37,37,0,1.0,24698,Text layer OK
-TZA,탄자니아,TZA.pdf,30,28,2,0.9333,21673,Partial text layer
-UGA,우간다,UGA.pdf,26,24,2,0.9231,19719,Partial text layer
-UKR,우크라이나,UKR.pdf,35,35,0,1.0,24294,Text layer OK
-UZB,우즈베키스탄,UZB.pdf,30,28,2,0.9333,24453,Partial text layer
-VNM,베트남,VNM.pdf,34,32,2,0.9412,25861,Partial text layer
+﻿Country_Code,Country_KR,PDF_File,Pages,Readable_Pages,OCR_Target_Pages,Readable_Page_Ratio,Extracted_Chars,Coverage_Status,Searchable_Pages,Searchable_Chunks,OCR_Completed_Pages,Search_Status,Direct_Extracted_Pages,Cached_OCR_Pages,Unsearchable_Pages
+BGD,방글라데시,BGD.pdf,35,32,3,0.9143,22139,Partial text layer,35,43,2,Searchable,33,2,0
+BOL,볼리비아,BOL.pdf,27,24,3,0.8889,20804,Partial text layer,25,35,1,Searchable,24,1,2
+COL,콜롬비아,COL.pdf,32,0,32,0.0,0,Image-only - OCR required,32,33,32,Searchable,0,32,0
+EGY,이집트,EGY.pdf,28,27,1,0.9643,18722,Partial text layer,28,33,1,Searchable,27,1,0
+ETH,에티오피아,ETH.pdf,30,27,3,0.9,22138,Partial text layer,28,35,1,Searchable,27,1,2
+GHA,가나,GHA.pdf,35,0,35,0.0,0,Image-only - OCR required,35,42,35,Searchable,0,35,0
+IDN,인도네시아,IDN.pdf,38,35,3,0.9211,21625,Partial text layer,38,43,1,Searchable,37,1,0
+IND,인도,IND.pdf,33,30,3,0.9091,21872,Partial text layer,33,42,1,Searchable,32,1,0
+KGZ,키르기스스탄,KGZ.pdf,33,31,2,0.9394,23038,Partial text layer,33,42,1,Searchable,32,1,0
+KHM,캄보디아,KHM.pdf,31,0,31,0.0,0,Image-only - OCR required,31,37,31,Searchable,0,31,0
+LAO,라오스,LAO.pdf,29,26,3,0.8966,19962,Partial text layer,27,34,1,Searchable,26,1,2
+LKA,스리랑카,LKA.pdf,40,39,1,0.975,28285,Partial text layer,40,49,1,Searchable,39,1,0
+MMR,미얀마,MMR.pdf,35,0,35,0.0,0,Image-only - OCR required,35,40,35,Searchable,0,35,0
+MNG,몽골,MNG.pdf,40,0,40,0.0,0,Image-only - OCR required,40,44,40,Searchable,0,40,0
+NPL,네팔,NPL.pdf,48,46,2,0.9583,31959,Partial text layer,48,56,1,Searchable,47,1,0
+PAK,파키스탄,PAK.pdf,30,0,30,0.0,0,Image-only - OCR required,30,35,30,Searchable,0,30,0
+PER,페루,PER.pdf,30,27,3,0.9,21461,Partial text layer,28,36,1,Searchable,27,1,2
+PHL,필리핀,PHL.pdf,34,31,3,0.9118,27709,Partial text layer,32,45,1,Searchable,31,1,2
+PRY,파라과이,PRY.pdf,27,0,27,0.0,0,Image-only - OCR required,25,29,25,Searchable,0,25,2
+RWA,르완다,RWA.pdf,47,44,3,0.9362,32684,Partial text layer,47,57,1,Searchable,46,1,0
+SEN,세네갈,SEN.pdf,47,46,1,0.9787,33950,Partial text layer,47,58,1,Searchable,46,1,0
+TJK,타지키스탄,TJK.pdf,37,36,1,0.973,24332,Partial text layer,37,45,1,Searchable,36,1,0
+TZA,탄자니아,TZA.pdf,30,27,3,0.9,21304,Partial text layer,28,36,1,Searchable,27,1,2
+UGA,우간다,UGA.pdf,26,23,3,0.8846,19396,Partial text layer,24,32,1,Searchable,23,1,2
+UKR,우크라이나,UKR.pdf,35,34,1,0.9714,23931,Partial text layer,35,43,1,Searchable,34,1,0
+UZB,우즈베키스탄,UZB.pdf,30,27,3,0.9,24046,Partial text layer,28,34,1,Searchable,27,1,2
+VNM,베트남,VNM.pdf,34,31,3,0.9118,25511,Partial text layer,32,42,1,Searchable,31,1,2

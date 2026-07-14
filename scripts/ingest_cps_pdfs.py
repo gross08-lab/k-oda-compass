@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -9,7 +11,8 @@ import pdfplumber
 from pypdf import PdfReader
 
 
-DEFAULT_CPS_DIR = Path("/Users/kimjaeyoung/Downloads/CPS(kor)")
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CPS_DIR = Path(os.getenv("KODA_CPS_PDF_DIR", ROOT / "data" / "cps_pdfs"))
 DEFAULT_OUTPUT = Path("KODA_cps_pdf_chunks.csv")
 
 CODE_TO_KR = {
@@ -69,7 +72,8 @@ def is_noisy(text: str) -> bool:
     if len(tokens) < 18:
         return True
     unique_ratio = len(set(tokens)) / max(len(tokens), 1)
-    return unique_ratio < 0.22
+    dominant_ratio = Counter(tokens).most_common(1)[0][1] / len(tokens)
+    return unique_ratio < 0.22 or dominant_ratio > 0.35
 
 
 def sector_tag(text: str) -> str:

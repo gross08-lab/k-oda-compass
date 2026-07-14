@@ -18,7 +18,7 @@
 - [ ] OCR coverage report included for image-only CPS PDFs
 - [ ] OCR refresh rerun if Tesseract Korean OCR is available
 - [ ] 2-minute screen recording
-- [ ] One-page PDF handout
+- [ ] Brief PDF handout
 
 ## Demo fallback
 

@@ -24,7 +24,7 @@ git push -u origin main
 
 ```toml
 OPENAI_API_KEY = "..."
-OPENAI_MODEL = "gpt-5.2"
+OPENAI_MODEL = "<OPTIONAL_MODEL_NAME>"
 ```
 
 5. Deploy and copy the live URL.
@@ -36,19 +36,19 @@ OPENAI_MODEL = "gpt-5.2"
 If CPS PDFs are updated, regenerate the chunk CSV before deployment:
 
 ```bash
-python3 scripts/ingest_cps_pdfs.py --input "/path/to/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ingest_cps_pdfs.py --input "<CPS_PDF_DIRECTORY>" --output KODA_cps_pdf_chunks.csv
 ```
 
 Audit OCR coverage:
 
 ```bash
-python3 scripts/cps_ocr_coverage.py --input "/path/to/CPS(kor)"
+python3 scripts/cps_ocr_coverage.py --input "<CPS_PDF_DIRECTORY>"
 ```
 
 If Tesseract Korean OCR is installed, regenerate chunks with OCR fallback:
 
 ```bash
-python3 scripts/ocr_cps_pdfs.py --input "/path/to/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ocr_cps_pdfs.py --input "<CPS_PDF_DIRECTORY>" --output KODA_cps_pdf_chunks.csv
 ```
 
 Commit the regenerated `KODA_cps_pdf_chunks.csv` so Streamlit Cloud can run without reparsing PDF files at startup.

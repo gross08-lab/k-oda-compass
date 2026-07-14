@@ -1,5 +1,7 @@
 # K-ODA Compass RAG
 
+> Historical baseline snapshot. Counts and validation statements below describe the pre-upgrade state and are retained for before/after comparison. Current verified metrics are in `docs/validation_report.md` and `artifacts/ai_upgrade/cps_corpus_validation.json`.
+
 외교·개발협력 공공데이터를 활용해 국가별 ODA 기회순위, 분야 추천, 정책·리스크 판단, 근거 기반 사업기획서를 생성하는 Evidence-grounded AI 의사결정 지원 서비스입니다.
 
 ## Live Links
@@ -16,7 +18,7 @@
 - 실제 LLM 연동: `OPENAI_API_KEY`가 있으면 OpenAI Responses API로 근거팩 기반 문장을 고도화합니다.
 - 데모 안정성: API 키가 없어도 로컬 RAG 생성기로 동일한 Evidence Pack 기반 결과를 생성합니다.
 - 설명 가능한 추천: 국가별 점수 기여도, 정책·리스크 proxy, 민감도 분석을 앱 안에서 검증합니다.
-- 제출 완성도: 사업기획서 Markdown, 1-page policy brief, Evidence Pack, PDF export, QR 배포 패널을 제공합니다.
+- 제출 완성도: 사업기획서 Markdown, Brief Markdown, Evidence Pack, Proposal PDF, Brief PDF, QR 배포 패널을 제공합니다.
 - 심사모드: 평가축 대응표, 90초 발표 흐름, 경쟁작 대비 포지션, 제출 체크리스트를 앱 안에서 바로 보여줍니다.
 
 ## 데이터
@@ -41,14 +43,14 @@ streamlit run app.py
 
 ```bash
 export OPENAI_API_KEY="..."
-export OPENAI_MODEL="gpt-5.2"
+export OPENAI_MODEL="<OPTIONAL_MODEL_NAME>"
 ```
 
 Streamlit Cloud에서는 `App settings > Secrets`에 다음 형식으로 입력합니다.
 
 ```toml
 OPENAI_API_KEY = "..."
-OPENAI_MODEL = "gpt-5.2"
+OPENAI_MODEL = "<OPTIONAL_MODEL_NAME>"
 ```
 
 ## 추천 시연 시나리오
@@ -58,7 +60,7 @@ OPENAI_MODEL = "gpt-5.2"
 3. `근거 Citation` 탭에서 KOICA/WDI 근거 ID 확인
 4. CPS PDF 원문 근거가 포함된 citation 확인
 5. `점수 기여도` 탭에서 추천 사유 설명
-6. `1-page Brief`, `Evidence Pack`, `PDF` 다운로드
+6. `Brief MD`, `Evidence Pack MD`, `Proposal PDF`, `Brief PDF` 다운로드
 7. `AI검증` 탭에서 RAG 문서 수, CPS 커버리지, 점수 재현성, 민감도 분석 확인
 8. `심사모드` 탭에서 심사기준 대응표 확인
 9. `배포` 탭에서 GitHub/Streamlit URL QR 생성
@@ -71,7 +73,7 @@ OPENAI_MODEL = "gpt-5.2"
 - 베트남 디지털정부 지자체 시나리오
 - 르완다 ICT·에너지 기업 시나리오
 
-각 시나리오는 proposal, 1-page brief, Evidence Pack, PDF 파일을 포함합니다.
+각 시나리오는 Proposal MD, Brief MD, Evidence Pack MD, Proposal PDF, Brief PDF를 포함합니다.
 
 `sample_outputs/case_studies/`에는 실제 서비스 납품 사례처럼 보이는 3페이지 case study PDF가 추가로 포함되어 있습니다.
 
@@ -91,22 +93,22 @@ OPENAI_MODEL = "gpt-5.2"
 
 ## CPS PDF 재생성
 
-PDF 원본이 `/Users/kimjaeyoung/Downloads/CPS(kor)`에 있을 때:
+PDF 원본 디렉터리를 지정할 때:
 
 ```bash
-python3 scripts/ingest_cps_pdfs.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ingest_cps_pdfs.py --input "<CPS_PDF_DIRECTORY>" --output KODA_cps_pdf_chunks.csv
 ```
 
 OCR 커버리지를 갱신하려면:
 
 ```bash
-python3 scripts/cps_ocr_coverage.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)"
+python3 scripts/cps_ocr_coverage.py --input "<CPS_PDF_DIRECTORY>"
 ```
 
 Tesseract Korean OCR이 설치된 환경에서 이미지형 PDF까지 재추출하려면:
 
 ```bash
-python3 scripts/ocr_cps_pdfs.py --input "/Users/kimjaeyoung/Downloads/CPS(kor)" --output KODA_cps_pdf_chunks.csv
+python3 scripts/ocr_cps_pdfs.py --input "<CPS_PDF_DIRECTORY>" --output KODA_cps_pdf_chunks.csv
 ```
 
 샘플 산출물을 재생성하려면:
@@ -116,7 +118,7 @@ python3 scripts/generate_submission_samples.py
 python3 scripts/generate_case_study_pdfs.py
 ```
 
-현재 로컬 감사 기준 CPS PDF 27개 중 텍스트 레이어로 읽히는 페이지는 663/921페이지이며, COL/GHA/KHM/MMR/MNG/PAK/PRY 7개 PDF는 이미지형이라 OCR 보강 대상입니다. OCR 도구가 없는 환경에서는 앱이 CSV proxy와 추출 가능한 CPS PDF 근거를 함께 사용하며, OCR 후 CSV를 재생성하면 자동 반영됩니다.
+이 baseline 생성 당시 감사에서는 CPS PDF 27개의 텍스트 레이어를 663/921페이지로 기록했고, COL/GHA/KHM/MMR/MNG/PAK/PRY 7개 PDF를 이미지형 OCR 보강 대상으로 분류했습니다. 이 문단은 역사적 비교용이며 현재 운영 수치로 사용하지 않습니다. 현재 검증값은 직접 추출 652페이지, OCR 검색 249페이지, 총 검색 가능 901페이지입니다.
 
 ## LLM 검증
 

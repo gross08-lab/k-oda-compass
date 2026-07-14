@@ -10,7 +10,7 @@ import numpy as np
 from .base import RetrievalQuery, result_row
 from .embedding import EmbeddingIndex, EmbeddingProviderUnavailable, FastEmbedProvider
 from .index import load_cps_records
-from .lexical import metadata_matches, score_records
+from .lexical import expand_query_text, metadata_matches, score_records
 
 
 class RetrievalUnavailable(RuntimeError):
@@ -76,6 +76,7 @@ class RetrievalEngine:
         *,
         allow_fallback: bool = True,
         hybrid_weights: tuple[float, float] | None = None,
+        phrase_bonus: float | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         if mode not in {"lexical", "embedding", "hybrid", "hybrid_filtered"}:
             raise ValueError(f"unknown retrieval mode: {mode}")
@@ -83,8 +84,22 @@ class RetrievalEngine:
         requested_mode = mode
         fallback_reason = None
 
-        lexical_filtered = mode == "lexical"
-        lexical_pairs = score_records(self.records, query, filter_metadata=lexical_filtered)
+        lexical_filtered = mode in {"lexical", "hybrid_filtered"}
+        lexical_config = self.config.get("lexical", {})
+        active_phrase_bonus = (
+            float(phrase_bonus)
+            if phrase_bonus is not None
+            else float(lexical_config.get("phrase_bonus", 1.5))
+        )
+        lexical_pairs = score_records(
+            self.records,
+            query,
+            filter_metadata=lexical_filtered,
+            phrase_bonus=active_phrase_bonus,
+            bm25_k1=float(lexical_config.get("bm25_k1", 1.2)),
+            bm25_b=float(lexical_config.get("bm25_b", 0.75)),
+            term_coverage_weight=float(lexical_config.get("term_coverage_weight", 2.0)),
+        )
         lexical_raw = np.zeros(len(self.records), dtype=np.float32)
         for index, score in lexical_pairs:
             lexical_raw[index] = score
@@ -93,7 +108,9 @@ class RetrievalEngine:
         if mode != "lexical":
             try:
                 embedding_index = self._load_embedding()
-                index_scores = embedding_index.score(query.query_text)
+                expanded_query = expand_query_text(query.query_text)
+                embedding_query = f"{query.query_text} {expanded_query}".strip()
+                index_scores = embedding_index.score(embedding_query)
                 id_to_score = dict(zip(embedding_index.chunk_ids, index_scores.tolist()))
                 embedding_raw = np.array(
                     [float(id_to_score.get(record["Chunk_ID"], 0.0)) for record in self.records],
@@ -104,7 +121,15 @@ class RetrievalEngine:
                     raise RetrievalUnavailable(str(exc)) from exc
                 fallback_reason = str(exc)
                 mode = "lexical"
-                lexical_pairs = score_records(self.records, query, filter_metadata=True)
+                lexical_pairs = score_records(
+                    self.records,
+                    query,
+                    filter_metadata=True,
+                    phrase_bonus=active_phrase_bonus,
+                    bm25_k1=float(lexical_config.get("bm25_k1", 1.2)),
+                    bm25_b=float(lexical_config.get("bm25_b", 0.75)),
+                    term_coverage_weight=float(lexical_config.get("term_coverage_weight", 2.0)),
+                )
                 lexical_raw[:] = 0
                 for index, score in lexical_pairs:
                     lexical_raw[index] = score
@@ -136,7 +161,13 @@ class RetrievalEngine:
                     emb_norm[candidate_indices] = emb_values
                 final_scores = lexical_weight * lex_norm + embedding_weight * emb_norm
 
-            candidate_indices.sort(key=lambda index: (-float(final_scores[index]), index))
+            candidate_indices.sort(
+                key=lambda index: (
+                    -float(final_scores[index]),
+                    str(self.records[index].get("Chunk_ID", "")),
+                    index,
+                )
+            )
 
         selected = [index for index in candidate_indices if float(final_scores[index]) > 0][:top_k]
         elapsed_ms = (time.perf_counter() - started) * 1000
@@ -161,5 +192,6 @@ class RetrievalEngine:
             "fallback_reason": fallback_reason,
             "result_count": len(rows),
             "latency_ms": round(elapsed_ms, 3),
+            "phrase_bonus": active_phrase_bonus,
         }
         return rows, status

@@ -44,5 +44,6 @@ def test_cps_pdf_chunks_are_usable_for_rag() -> None:
     cps = pd.read_csv(ROOT / "KODA_cps_pdf_chunks.csv")
     assert cps["Chunk_ID"].is_unique
     assert cps["Text_Length"].min() >= 120
-    assert cps["Country_KR"].nunique() >= 20
-    assert len(set(master["WDI_Country_Code"]) & set(cps["Country_Code"])) >= 19
+    assert len(cps) == 1100
+    assert cps["Country_Code"].nunique() == 27
+    assert len(set(master["WDI_Country_Code"]) & set(cps["Country_Code"])) == 26

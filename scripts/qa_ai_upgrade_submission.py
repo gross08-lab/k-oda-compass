@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -27,6 +28,24 @@ FORBIDDEN = (
     "/home/",
     "serviceKey 실제값",
     "github token",
+    "20개국 검색",
+    "19/50",
+    "806개",
+    "60개 질의",
+    "38 PASS",
+    "214/214",
+    "MRR 0.89",
+)
+
+REQUIRED = (
+    "1,100개",
+    "26/50",
+    "29 / 91",
+    "54 PASS",
+    "47 / 47",
+    "17 / 17",
+    "11.59ms",
+    "0.716",
 )
 
 
@@ -66,12 +85,12 @@ def main() -> None:
     parser.add_argument(
         "--pdf",
         type=Path,
-        default=ROOT / "artifacts" / "proposal" / "final_submission_ai_upgrade" / "KODA_Compass_Proposal_FINAL_SUBMISSION_AI_UPGRADE.pdf",
+        default=ROOT / "artifacts" / "proposal" / "final_submission_ai_upgrade" / "KODA_Compass_Proposal_FINAL_SUBMISSION_1800.pdf",
     )
     parser.add_argument(
         "--rendered",
         type=Path,
-        default=ROOT / "artifacts" / "proposal" / "final_submission_ai_upgrade" / "rendered",
+        default=ROOT / "artifacts" / "proposal" / "final_submission_ai_upgrade" / "rendered_0714",
     )
     args = parser.parse_args()
     reader = PdfReader(str(args.pdf))
@@ -85,15 +104,18 @@ def main() -> None:
         image_checks.append({"file": path.name, "extrema": extrema, "nonblank": extrema[0] < 245})
     urls = annotation_urls(reader)
     forbidden_hits = {term: all_text.count(term) for term in FORBIDDEN if term in all_text}
+    required_hits = {term: all_text.count(term) for term in REQUIRED}
     secret_hits = re.findall(r"(?:sk-[A-Za-z0-9_-]{12,}|OPENAI_API_KEY\s*=\s*\S+)", all_text)
     sizes = []
     for page in reader.pages:
         sizes.append((round(float(page.mediabox.width), 2), round(float(page.mediabox.height), 2)))
     output_dir = args.pdf.parent
-    contact_sheet(rendered, output_dir / "KODA_Compass_AI_Upgrade_Contact_Sheet.png")
+    contact_sheet(rendered, output_dir / "KODA_Compass_Contact_Sheet_1800.png")
     payload = {
+        "validation_date": "2026-07-14",
         "pdf": args.pdf.name,
         "bytes": args.pdf.stat().st_size,
+        "sha256": hashlib.sha256(args.pdf.read_bytes()).hexdigest(),
         "pages": len(reader.pages),
         "page_sizes": sizes,
         "all_a4": all(abs(width - 595.28) < 1 and abs(height - 841.89) < 1 for width, height in sizes),
@@ -105,7 +127,10 @@ def main() -> None:
         "live_demo_link_present": "https://k-oda-compass.streamlit.app" in urls,
         "github_link_present": "https://github.com/gross08-lab/k-oda-compass" in urls,
         "forbidden_hits": forbidden_hits,
+        "required_hits": required_hits,
+        "required_metrics_present": all(required_hits.values()),
         "secret_hits": secret_hits,
+        "qr_image_decode": "BLOCKED_BY_ENVIRONMENT",
     }
     (output_dir / "qa_automated_results.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
